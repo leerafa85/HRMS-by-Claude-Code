@@ -1,0 +1,40 @@
+{% load static hrms %}<!doctype html>
+<html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ doc.title }} · {{ company }}</title>
+<link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+<style>
+  body { font-size: 12px; background: #fff; }
+  .doc { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; color: #1f4e79; margin: 18px 0 6px; border-bottom: 1px solid #c8ced6; padding-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  th { background: #1f4e79 !important; color: #fff !important; font-weight: 600; }
+  th, td { border: 1px solid #c8ced6; padding: 3px 5px; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f3f6f9; }
+  tfoot td { background: #dce6f0 !important; font-weight: 700; }
+  .meta { color: #555; }
+  @page { size: {% if doc.landscape %}A4 landscape{% else %}A4{% endif %}; margin: 12mm; }
+  @media print { .no-print { display: none !important; } .doc { padding: 0; max-width: none; } thead { display: table-header-group; }
+    th, td, tfoot td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } tr { page-break-inside: avoid; } }
+</style></head>
+<body><div class="doc">
+  <div class="no-print d-flex gap-2 mb-3">
+    <button onclick="window.print()" class="btn btn-primary btn-sm">Imprimir</button>
+    <a href="{{ pdf_url }}" class="btn btn-outline-danger btn-sm">Descargar PDF</a>
+    <button onclick="history.length > 1 ? history.back() : window.close()" class="btn btn-link btn-sm">Volver</button>
+  </div>
+  <div class="meta">{{ company }}</div>
+  <h1>{{ doc.title }}</h1>
+  {% for line in doc.subtitle %}<div class="meta">{{ line }}</div>{% endfor %}
+  {% for b in doc.blocks %}
+    {% if b.kind == "section" %}<h2>{{ b.title }}</h2>
+    {% elif b.kind == "note" %}<p class="meta">{{ b.text }}</p>
+    {% elif b.rows %}<table><thead><tr>{% for h in b.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in b.rows %}<tr>{% for c in row %}<td>{{ c|doc_cell }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+      {% if b.footer %}<tfoot><tr>{% for c in b.footer %}<td>{{ c|doc_cell }}</td>{% endfor %}</tr></tfoot>{% endif %}</table>
+    {% else %}<p class="meta">{{ b.empty_text }}</p>{% endif %}
+  {% endfor %}
+  <p class="meta mt-3">Generado el {{ generated|date:"d/m/Y H:i" }} por {{ generated_by }}.</p>
+</div>
+<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 300); });</script>
+</body></html>

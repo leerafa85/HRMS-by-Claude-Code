@@ -4,6 +4,8 @@
   <h1 class="h4 page-title me-auto">{{ title }}</h1>
   {% block toolbar_extra %}{% endblock %}
   {% for label, url, icon in extra_actions %}<a href="{{ url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-{{ icon }} me-1"></i>{{ label }}</a>{% endfor %}
+  {% if printable %}<a href="?{{ querystring }}{% if querystring %}&{% endif %}formato=pdf" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+  <a href="?{{ querystring }}{% if querystring %}&{% endif %}formato=imprimir" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Imprimir</a>{% endif %}
   {% if export_url %}<a href="{{ export_url }}?{{ querystring }}" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel</a>{% endif %}
   {% if create_url %}<a href="{{ create_url }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>{{ create_label }}</a>{% endif %}
 </div>

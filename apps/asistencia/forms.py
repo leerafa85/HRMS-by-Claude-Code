@@ -21,7 +21,7 @@ class AbsenceForm(_EmployeeQSMixin, BaseModelForm):
 class TardinessForm(_EmployeeQSMixin, BaseModelForm):
     class Meta:
         model = Tardiness
-        fields = ["employee", "date", "scheduled_time", "arrival_time", "justified", "notes"]
+        fields = ["employee", "date", "scheduled_time", "arrival_time", "justified", "attachment", "notes"]
         widgets = {"date": DATE, "scheduled_time": TIME, "arrival_time": TIME}
         help_texts = {"scheduled_time": "Vacío = hora de entrada del legajo o de la empresa."}
 
@@ -29,5 +29,5 @@ class TardinessForm(_EmployeeQSMixin, BaseModelForm):
 class OvertimeForm(_EmployeeQSMixin, BaseModelForm):
     class Meta:
         model = Overtime
-        fields = ["employee", "date", "start_time", "end_time", "hours", "rate", "compensation", "reason"]
+        fields = ["employee", "date", "start_time", "end_time", "hours", "rate", "compensation", "reason", "attachment"]
         widgets = {"date": DATE, "start_time": TIME, "end_time": TIME}

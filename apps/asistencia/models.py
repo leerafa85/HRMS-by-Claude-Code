@@ -54,6 +54,7 @@ class Tardiness(models.Model):
     minutes_late = models.PositiveIntegerField("minutos de demora", default=0, editable=False)
     justified = models.BooleanField("justificada", default=False)
     notes = models.CharField("observaciones", max_length=250, blank=True)
+    attachment = models.FileField("comprobante", upload_to=upload_attendance, blank=True, validators=[validate_document])
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, verbose_name="registrado por"
     )
@@ -110,6 +111,7 @@ class Overtime(models.Model):
     )
     compensation = models.CharField("compensación", max_length=10, choices=Compensation.choices, default=Compensation.PAGO)
     reason = models.CharField("motivo / tarea", max_length=250, blank=True)
+    attachment = models.FileField("comprobante", upload_to=upload_attendance, blank=True, validators=[validate_document])
     status = models.CharField("estado", max_length=10, choices=Status.choices, default=Status.PENDIENTE)
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",

@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Resumen por empleado{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 page-title me-auto">Resumen de asistencia por empleado</h1>
+  {% if doc %}
+  <a href="?{{ request.GET.urlencode }}&formato=pdf" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+  <a href="?{{ request.GET.urlencode }}&formato=imprimir" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Imprimir</a>
+  {% endif %}
+</div>
+<form class="card card-body py-2 mb-3" method="get"><div class="row g-2 align-items-end">
+  <div class="col-md-4"><label class="form-label">Empleado</label><select name="empleado" class="form-select form-select-sm" required>
+    <option value="">Elegí un empleado…</option>{% for e in employees %}<option value="{{ e.pk }}" {% if employee.pk == e.pk %}selected{% endif %}>{{ e }} (leg. {{ e.file_number }}){% if e.status == "baja" %} — baja{% endif %}</option>{% endfor %}</select></div>
+  <div class="col-md-2 col-6"><label class="form-label">Desde</label><input type="date" name="desde" value="{{ start|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+  <div class="col-md-2 col-6"><label class="form-label">Hasta</label><input type="date" name="hasta" value="{{ end|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+  <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Ver resumen</button></div>
+  <div class="col-md-2 small">{% for y in years %}<a href="?empleado={{ employee.pk|default:'' }}&desde={{ y }}-01-01&hasta={{ y }}-12-31" class="me-2">{{ y }}</a>{% endfor %}</div>
+</div></form>
+
+{% if doc %}
+<div class="card"><div class="card-body">
+  <h2 class="h5 mb-1">{{ doc.title }}</h2>
+  {% for line in doc.subtitle %}<div class="small text-muted">{{ line }}</div>{% endfor %}
+  {% for b in doc.blocks %}
+    {% if b.kind == "section" %}<h3 class="h6 text-primary border-bottom pb-1 mt-4">{{ b.title }}</h3>
+    {% elif b.kind == "note" %}<p class="small text-muted mb-0">{{ b.text }}</p>
+    {% elif b.rows %}<div class="table-responsive"><table class="table table-sm table-bordered mb-1">
+      <thead class="table-light"><tr>{% for h in b.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in b.rows %}<tr>{% for c in row %}<td>{% if c.url %}<a href="{{ c.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ c.text }}</a>{% else %}{{ c|doc_cell }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+      {% if b.footer %}<tfoot><tr class="table-primary fw-semibold">{% for c in b.footer %}<td>{{ c|doc_cell }}</td>{% endfor %}</tr></tfoot>{% endif %}
+    </table></div>
+    {% else %}<p class="small text-muted">{{ b.empty_text }}</p>{% endif %}
+  {% endfor %}
+</div></div>
+{% elif not employees %}<p class="text-muted">No hay empleados disponibles.</p>
+{% else %}<p class="text-muted">Elegí un empleado y el período para ver su resumen.</p>{% endif %}
+{% endblock %}

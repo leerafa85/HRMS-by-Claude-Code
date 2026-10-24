@@ -9,11 +9,13 @@ from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.crud import Column, HRCreateView, HRDeleteView, HRListView, HRUpdateView
-from apps.core.dates import MONTH_CHOICES
+from apps.core.dates import MESES, MONTH_CHOICES
+from apps.core.formatting import format_number
 from apps.core.models import AuditLog
 from apps.core.modules import Level, Module
 from apps.empleados.models import Department, Employee
 from apps.licencias.models import LeaveRequest
+from apps.reportes.documents import Document, Table, document_response, wants_document
 from apps.reportes.excel import excel_response
 
 from .forms import AbsenceForm, OvertimeForm, TardinessForm
@@ -59,6 +61,13 @@ class AbsenceList(_Base, HRListView):
     ]
     filters = [EMP_FILTER, AREA_FILTER, ("justificada", "justified", "Justificada", [("True", "Sí"), ("False", "No")]),
                MONTH_FILTER, YEAR_FILTER]
+    printable = True
+
+    def print_footer(self, qs):
+        n = qs.count()
+        return ["Total", f"{n} inasistencia{'s' if n != 1 else ''}", "",
+                f"{qs.filter(justified=True).count()} justificadas", f"{qs.filter(paid=True).count()} con goce",
+                f"{qs.filter(notified=True).count()} con aviso", f"{qs.exclude(attachment='').count()} con comprobante"]
 
 
 class AbsenceCreate(_FormBase, HRCreateView):
@@ -91,9 +100,17 @@ class TardinessList(_Base, HRListView):
     columns = [
         Column("Empleado", "employee"), Column("Fecha", "date"), Column("Entrada pactada", lambda t: t.scheduled_time.strftime("%H:%M") if t.scheduled_time else "—"),
         Column("Llegada", lambda t: t.arrival_time.strftime("%H:%M")), Column("Minutos", "minutes_late"),
-        Column("Justificada", "justified"), Column("Observaciones", "notes"),
+        Column("Justificada", "justified"), Column("Comprobante", lambda t: "Sí" if t.attachment else "No"),
+        Column("Observaciones", "notes"),
     ]
     filters = [EMP_FILTER, AREA_FILTER, MONTH_FILTER, YEAR_FILTER]
+    printable = True
+
+    def print_footer(self, qs):
+        n = qs.count()
+        mins = qs.aggregate(t=Sum("minutes_late"))["t"] or 0
+        return ["Total", f"{n} llegada{'s' if n != 1 else ''} tarde", "", "", f"{mins} min",
+                f"{qs.filter(justified=True).count()} justificadas", f"{qs.exclude(attachment='').count()} con comprobante", ""]
 
 
 class TardinessCreate(_FormBase, HRCreateView):
@@ -130,8 +147,16 @@ class OvertimeList(_Base, HRListView):
         Column("Empleado", "employee"), Column("Fecha", "date"), Column("Horas", "hours"),
         Column("Recargo", "rate"), Column("Compensación", "compensation"), Column("Motivo", "reason"),
         Column("Estado", "status", badge=OT_BADGES), Column("Aprobó", "approved_by"),
+        Column("Comprobante", lambda o: "Sí" if o.attachment else "No"),
     ]
     filters = [EMP_FILTER, AREA_FILTER, ("estado", "status", "Estado", Overtime.Status.choices), MONTH_FILTER, YEAR_FILTER]
+    printable = True
+
+    def print_footer(self, qs):
+        total = qs.aggregate(t=Sum("hours"))["t"] or 0
+        approved = qs.filter(status=Overtime.Status.APROBADA).aggregate(t=Sum("hours"))["t"] or 0
+        return ["Total", f"{qs.count()} registros", f"{format_number(total)} h", "", "",
+                f"Aprobadas: {format_number(approved)} h", "", "", f"{qs.exclude(attachment='').count()} con comprobante"]
 
 
 class OvertimeCreate(_FormBase, HRCreateView):
@@ -243,13 +268,24 @@ def summary(request):
     if request.GET.get("area"):
         employees = employees.filter(department_id=request.GET["area"])
     rows = monthly_summary(year, month, employees)
+    headers = ["Legajo", "Empleado", "Área", "Inasistencias", "Injustificadas", "Llegadas tarde", "Minutos tarde",
+               "HE 50 %", "HE 100 %", "HE a banco", "Licencias (días)"]
+    data = [[r["employee"].file_number, str(r["employee"]), str(r["employee"].department or ""), r["absences"],
+             r["absences_unjustified"], r["tardies"], r["tardy_minutes"], r["h50"], r["h100"], r["banco"],
+             "; ".join(f"{k}: {v}" for k, v in r["leaves"].items())] for r in rows]
     if request.GET.get("exportar"):
-        headers = ["Legajo", "Empleado", "Área", "Inasistencias", "Injustificadas", "Llegadas tarde", "Minutos tarde",
-                   "HE 50 %", "HE 100 %", "HE a banco", "Licencias (días)"]
-        data = [[r["employee"].file_number, str(r["employee"]), str(r["employee"].department or ""), r["absences"],
-                 r["absences_unjustified"], r["tardies"], r["tardy_minutes"], r["h50"], r["h100"], r["banco"],
-                 "; ".join(f"{k}: {v}" for k, v in r["leaves"].items())] for r in rows]
         return excel_response(f"novedades_{year}_{month:02d}", "Novedades", headers, data)
+    if wants_document(request):
+        area = Department.objects.filter(pk=request.GET.get("area") or None).first()
+        totals = ["Total", f"{len(rows)} empleados", ""] + [
+            sum(r[k] for r in rows) for k in ("absences", "absences_unjustified", "tardies", "tardy_minutes")
+        ] + [f"{format_number(sum(r[k] for r in rows))}" for k in ("h50", "h100", "banco")] + [""]
+        printable_rows = [row[:7] + [format_number(v) if v else "" for v in row[7:10]] + row[10:] for row in data]
+        doc = Document(
+            title=f"Novedades de asistencia · {MESES[month - 1]} {year}",
+            subtitle=[f"Área: {area or 'todas'}", "Solo horas extras y licencias aprobadas."],
+        ).add(Table(headers, printable_rows, footer=totals))
+        return document_response(request, doc, f"novedades_{year}_{month:02d}")
     return render(request, "asistencia/summary.html", {
         "rows": rows, "year": year, "month": month, "months": MONTH_CHOICES,
         "departments": Department.objects.all(), "area": request.GET.get("area", ""),
@@ -269,4 +305,38 @@ def my_attendance(request):
         "tardies": employee.tardies.filter(date__year=year),
         "overtimes": employee.overtimes.filter(date__year=year),
         "year": year,
+    })
+
+
+@login_required
+def employee_summary(request):
+    """Resumen por empleado con detalle, subtotales por tipo y total general (web, PDF e impresión)."""
+    from . import employee_summary as es
+
+    allowed = es.employees_for(request.user)
+    if not allowed.exists():
+        raise PermissionDenied
+    today = datetime.date.today()
+    own = getattr(request.user, "employee", None)
+    emp_id = request.GET.get("empleado") or (own.pk if own and not request.user.can(Module.ASISTENCIA) else "")
+    employee = get_object_or_404(allowed, pk=emp_id) if str(emp_id).isdigit() else None
+
+    def parse(name, default):
+        try:
+            return datetime.date.fromisoformat(request.GET.get(name, ""))
+        except ValueError:
+            return default
+
+    start = parse("desde", datetime.date(today.year, 1, 1))
+    end = parse("hasta", datetime.date(today.year, 12, 31))
+    if end < start:
+        start, end = end, start
+
+    doc = es.build(employee, start, end) if employee else None
+    if doc and wants_document(request):
+        return document_response(request, doc, f"asistencia_{employee.file_number}_{employee.last_name}")
+    return render(request, "asistencia/employee_summary.html", {
+        "doc": doc, "employee": employee, "start": start, "end": end,
+        "employees": allowed.order_by("last_name", "first_name"),
+        "years": range(today.year, today.year - 6, -1),
     })

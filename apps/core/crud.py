@@ -120,6 +120,37 @@ class HRListView(ModuleRequiredMixin, UrlNamesMixin, ListView):
     title = ""
     create_label = "Nuevo"
     extra_actions = []  # [(etiqueta, url_name, icono, nivel requerido opcional)]
+    printable = False  # habilita PDF e impresión del listado completo filtrado
+
+    def get(self, request, *args, **kwargs):
+        if self.printable and request.GET.get("formato") in ("pdf", "imprimir"):
+            from apps.reportes.documents import Document, Table, document_response
+
+            qs = self.get_queryset()
+            rows = [[col.render(obj) for col in self.columns] for obj in qs]
+            title = self.title or self.model._meta.verbose_name_plural.capitalize()
+            doc = Document(title=title, subtitle=self.print_subtitle(len(rows)))
+            doc.add(Table([c.label for c in self.columns], rows, footer=self.print_footer(qs)))
+            return document_response(request, doc, title)
+        return super().get(request, *args, **kwargs)
+
+    def print_subtitle(self, count):
+        parts = []
+        for param, _field, label, options in self.get_filters():
+            value = self.request.GET.get(param)
+            if value:
+                text = next((str(lab) for val, lab in options if str(val) == value), value)
+                parts.append(f"{label}: {text}")
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            parts.append(f"Búsqueda: «{q}»")
+        lines = ["Filtros: " + " · ".join(parts)] if parts else ["Sin filtros (todos los registros)"]
+        lines.append(f"Registros: {count}")
+        return lines
+
+    def print_footer(self, queryset):
+        """Fila de totales opcional para el PDF/impresión."""
+        return None
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -165,6 +196,7 @@ class HRListView(ModuleRequiredMixin, UrlNamesMixin, ListView):
                 "create_url": self.url_for("create") if ctx.get("can_edit") else None,
                 "create_label": self.create_label,
                 "export_url": self.url_for("export"),
+                "printable": self.printable,
                 "search_enabled": bool(self.search_fields),
                 "q": self.request.GET.get("q", ""),
                 "filter_defs": [

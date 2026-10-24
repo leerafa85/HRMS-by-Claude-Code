@@ -307,6 +307,8 @@ PROTECTED_FILES = [
     ("empleados.SalaryAdjustment", "attachment", Module.SALARIOS, "employee"),
     ("licencias.LeaveRequest", "attachment", Module.LICENCIAS, "employee"),
     ("asistencia.Absence", "attachment", Module.ASISTENCIA, "employee"),
+    ("asistencia.Tardiness", "attachment", Module.ASISTENCIA, "employee"),
+    ("asistencia.Overtime", "attachment", Module.ASISTENCIA, "employee"),
     ("reclutamiento.Candidate", "resume", Module.RECLUTAMIENTO, None),
     ("core.CompanySettings", "logo", None, None),
 ]

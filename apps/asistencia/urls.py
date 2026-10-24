@@ -22,5 +22,6 @@ urlpatterns = [
           views.OvertimeDelete),
     path("horas-extras/<int:pk>/revisar/", views.overtime_review, name="horaextra_review"),
     path("resumen/", views.summary, name="resumen"),
+    path("resumen-por-empleado/", views.employee_summary, name="resumen_empleado"),
     path("mi-asistencia/", views.my_attendance, name="mi_asistencia"),
 ]

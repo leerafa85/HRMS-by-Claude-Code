@@ -52,3 +52,10 @@ def field(bound_field, col="col-md-6"):
 @register.filter
 def widget_type(bound_field):
     return bound_field.field.widget.__class__.__name__.lower()
+
+
+@register.filter
+def doc_cell(value):
+    from apps.reportes.documents import cell_text
+
+    return cell_text(value)

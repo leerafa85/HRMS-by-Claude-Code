@@ -24,6 +24,7 @@ MENU = [
         ("Llegadas tarde", "asistencia:tardanza_list", "alarm", Module.ASISTENCIA, Level.VER),
         ("Horas extras", "asistencia:horaextra_list", "clock-history", Module.ASISTENCIA, Level.VER),
         ("Resumen mensual", "asistencia:resumen", "table", Module.ASISTENCIA, Level.VER),
+        ("Resumen por empleado", "asistencia:resumen_empleado", "person-lines-fill", Module.ASISTENCIA, Level.VER),
     ]),
     ("Talento", [
         ("Búsquedas", "reclutamiento:busqueda_list", "briefcase", Module.RECLUTAMIENTO, Level.VER),
