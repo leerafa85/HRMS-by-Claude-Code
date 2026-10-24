@@ -44,6 +44,8 @@ if os.environ.get("CODESPACE_NAME"):
     _cs_domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
     ALLOWED_HOSTS.append(f".{_cs_domain}")
     CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ['CODESPACE_NAME']}-8000.{_cs_domain}")
+    # El proxy de Codespaces reescribe el encabezado Origin a https://localhost:8000.
+    CSRF_TRUSTED_ORIGINS.append("https://localhost:8000")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
