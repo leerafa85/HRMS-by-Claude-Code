@@ -1,0 +1,6 @@
+{% extends "crud/list.html" %}
+{% block before_table %}
+<ul class="nav nav-pills mb-3 small">
+  {% for t, label in types %}<li class="nav-item"><a class="nav-link {% if t == ptype %}active{% endif %}" href="{% url 'evaluaciones:plan_list' t %}">{{ label }}</a></li>{% endfor %}
+</ul>
+{% endblock %}

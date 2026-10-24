@@ -172,6 +172,8 @@ def employee_context(employee, user, self_view=False):
         "admin": user.can(Module.EMPLEADOS, Level.ADMINISTRAR),
         "salary_edit": user.can(Module.SALARIOS, Level.EDITAR),
         "onboarding": user.can(Module.ONBOARDING),
+        "evaluations": user.can(Module.EVALUACIONES) or is_self or is_manager,
+        "evaluations_edit": user.can(Module.EVALUACIONES, Level.EDITAR),
         "payments": user.can(Module.PAGOS) or is_self,
         "payments_edit": user.can(Module.PAGOS, Level.EDITAR),
         "sensitive": user.can(Module.EMPLEADOS) or is_self,
@@ -205,6 +207,10 @@ def employee_context(employee, user, self_view=False):
         ctx["advances"] = employee.advances.all()[:24]
         ctx["advances_pending"] = SalaryAdvance.total(SalaryAdvance.pending_discount(employee=employee))
         ctx["settlements"] = employee.settlements.prefetch_related("items", "payments") if user.can(Module.PAGOS) else []
+    if can["evaluations"]:
+        from apps.evaluaciones.views import plans_for_employee
+
+        ctx["goal_plans"] = plans_for_employee(employee).select_related("department", "employee")[:30]
     if can["onboarding"]:
         ctx["checklists"] = employee.checklists.prefetch_related("tasks")
     return ctx

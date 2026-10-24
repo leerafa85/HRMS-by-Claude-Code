@@ -13,6 +13,7 @@ class Module(models.TextChoices):
     FERIADOS = "feriados", "Feriados"
     RECLUTAMIENTO = "reclutamiento", "Reclutamiento (búsquedas y candidatos)"
     ONBOARDING = "onboarding", "Onboarding / Offboarding"
+    EVALUACIONES = "evaluaciones", "Evaluaciones (metas por equipo y personal)"
     ANUNCIOS = "anuncios", "Anuncios"
     REPORTES = "reportes", "Reportes"
     CONFIGURACION = "configuracion", "Configuración (áreas, puestos, tipos de licencia)"
@@ -39,6 +40,7 @@ DEFAULT_ROLES = {
         Module.FERIADOS: Level.EDITAR,
         Module.RECLUTAMIENTO: Level.EDITAR,
         Module.ONBOARDING: Level.EDITAR,
+        Module.EVALUACIONES: Level.EDITAR,
         Module.ANUNCIOS: Level.EDITAR,
         Module.REPORTES: Level.VER,
         Module.CONFIGURACION: Level.VER,
@@ -47,6 +49,7 @@ DEFAULT_ROLES = {
         Module.EMPLEADOS: Level.VER,
         Module.LICENCIAS: Level.VER,
         Module.ASISTENCIA: Level.EDITAR,
+        Module.EVALUACIONES: Level.EDITAR,
         Module.FERIADOS: Level.VER,
         Module.RECLUTAMIENTO: Level.VER,
         Module.ANUNCIOS: Level.VER,

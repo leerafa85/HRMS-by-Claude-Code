@@ -23,6 +23,7 @@ urlpatterns = [
     path("anuncios/", include("apps.anuncios.urls")),
     path("reportes/", include("apps.reportes.urls")),
     path("pagos/", include("apps.pagos.urls")),
+    path("evaluaciones/", include("apps.evaluaciones.urls")),
     path("empleos/", include("apps.reclutamiento.public_urls")),
     re_path(r"^archivos/(?P<path>.+)$", core_views.protected_media, name="media"),
     path("django-admin/", admin.site.urls),

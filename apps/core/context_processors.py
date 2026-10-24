@@ -37,6 +37,12 @@ MENU = [
         ("Candidatos", "reclutamiento:candidato_list", "person-badge", Module.RECLUTAMIENTO, Level.VER),
         ("Onboarding / Offboarding", "onboarding:checklist_list", "list-check", Module.ONBOARDING, Level.VER),
     ]),
+    ("Evaluaciones", [
+        ("Metas mensuales", "evaluaciones:plan_list|mensual", "check2-square", Module.EVALUACIONES, Level.VER),
+        ("Metas trimestrales", "evaluaciones:plan_list|trimestral", "check2-all", Module.EVALUACIONES, Level.VER),
+        ("Metas semestrales", "evaluaciones:plan_list|semestral", "bullseye", Module.EVALUACIONES, Level.VER),
+        ("Metas anuales", "evaluaciones:plan_list|anual", "trophy", Module.EVALUACIONES, Level.VER),
+    ]),
     ("Comunicación", [
         ("Anuncios", "anuncios:anuncio_list", "megaphone", Module.ANUNCIOS, Level.VER),
     ]),
@@ -52,11 +58,17 @@ MENU = [
 ]
 
 
+def _url(name):
+    """Permite nombres con un argumento: «app:vista|argumento»."""
+    name, _, arg = name.partition("|")
+    return reverse(name, args=[arg]) if arg else reverse(name)
+
+
 def build_menu(user):
     sections = []
     for title, items in MENU:
         visible = [
-            {"label": label, "url": reverse(name), "icon": icon, "name": name}
+            {"label": label, "url": _url(name), "icon": icon, "name": name}
             for label, name, icon, module, level in items
             if module is None or user.can(module, level)
         ]

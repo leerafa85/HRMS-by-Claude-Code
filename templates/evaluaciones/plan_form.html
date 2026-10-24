@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:900px"><div class="card-body">
+  <h1 class="h5 mb-3">{{ title }}</h1>
+  <form method="post" novalidate id="planForm">{% csrf_token %}{% include "partials/form_errors.html" %}
+    <div class="row">{% field form.period_type "col-md-4" %}{% field form.year "col-md-4" %}{% field form.period_number "col-md-4" %}</div>
+    <div class="row">{% field form.scope "col-md-4" %}<div class="col-md-8 js-team">{% field form.department "col-12 px-0" %}</div><div class="col-md-8 js-person">{% field form.employee "col-12 px-0" %}</div></div>
+    <div class="row">{% field form.evaluator %}{% if form.status %}{% field form.status %}{% endif %}{% field form.notes "col-12" %}</div>
+    <div class="d-flex gap-2"><button class="btn btn-primary">{% if object %}Guardar{% else %}Crear y cargar metas{% endif %}</button>{% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-link">Cancelar</a>{% endif %}</div>
+  </form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  function scope() { const c = document.querySelector('input[name="scope"]:checked'); return c ? c.value : "personal"; }
+  function sync() {
+    document.querySelector(".js-team").style.display = scope() === "equipo" ? "" : "none";
+    document.querySelector(".js-person").style.display = scope() === "personal" ? "" : "none";
+  }
+  document.querySelectorAll('input[name="scope"]').forEach(r => r.addEventListener("change", sync)); sync();
+  // Al cambiar el tipo de meta se recargan las opciones de período.
+  const type = document.getElementById("id_period_type");
+  type.addEventListener("change", function () { const u = new URL(location.href); u.searchParams.set("tipo", type.value); location.href = u; });
+})();
+</script>
+{% endblock %}

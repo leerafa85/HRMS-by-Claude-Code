@@ -1,0 +1,96 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}{{ title }} · {{ plan.target_name }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <div class="me-auto">
+    <div class="small text-muted">{% if user|can_view:"evaluaciones" %}<a href="{% url 'evaluaciones:plan_list' plan.period_type %}">{{ title }}</a>{% else %}{{ title }}{% endif %}</div>
+    <h1 class="h4 page-title">{{ plan.target_name }} · {{ plan.period_label }}</h1>
+    <div class="small text-muted">{{ plan.get_scope_display }} · {{ plan.start_date|date:"d/m/Y" }} al {{ plan.end_date|date:"d/m/Y" }}{% if plan.evaluator %} · Evaluador: {{ plan.evaluator }}{% endif %}</div>
+  </div>
+  <a href="?formato=pdf" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+  <a href="?formato=imprimir" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Imprimir</a>
+  {% if can_edit %}
+  <a href="{% url 'evaluaciones:plan_update' plan.pk %}" class="btn btn-sm btn-outline-primary">Editar datos</a>
+  <form method="post" action="{% url 'evaluaciones:plan_duplicate' plan.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" title="Crea el plan del período siguiente con los mismos objetivos">Copiar al período siguiente</button></form>
+  {% endif %}
+  {% if can_admin %}<a href="{% url 'evaluaciones:plan_delete' plan.pk %}" class="btn btn-sm btn-outline-danger">Eliminar</a>{% endif %}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Metas cumplidas</div><div class="fs-4 fw-bold">{{ plan.done_goals }} de {{ plan.total_goals }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Avance</div><div class="fs-4 fw-bold">{{ plan.progress }} %</div><div class="progress" style="height:6px"><div class="progress-bar bg-success" style="width:{{ plan.progress }}%"></div></div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Evaluación promedio (1 a {{ score_max }})</div><div class="fs-4 fw-bold">{{ plan.average_score|num:2|default:"—" }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Estado</div><div class="fs-5 fw-semibold">{{ plan.get_status_display }}</div></div></div></div>
+</div>
+
+<form method="post" id="goalsForm">{% csrf_token %}
+{{ formset.management_form }}
+<div class="card"><div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 goals-table">
+  <thead class="table-light"><tr>
+    <th style="width:36px">#</th><th style="min-width:240px">Objetivo / meta</th>{% if team %}<th style="min-width:160px">Responsable</th>{% endif %}
+    <th class="text-center" style="width:70px">Cumplido</th><th style="width:100px">Evaluación<br><span class="fw-normal small">1 a {{ score_max }}</span></th>
+    <th style="min-width:200px">Cómo lo cumplió</th><th style="min-width:170px">Observaciones</th>{% if can_edit %}<th style="width:60px" class="text-center">Quitar</th>{% endif %}
+  </tr></thead>
+  <tbody id="goalRows">
+  {% for f in formset %}
+  <tr class="goal-row {% if f.instance.done %}table-success{% endif %}">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+    <td class="text-muted small js-num">{{ forloop.counter }}</td>
+    {% if can_edit %}
+    <td>{{ f.objective }}{% for e in f.objective.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+    {% if team %}<td>{{ f.responsible }}</td>{% endif %}
+    <td class="text-center"><div class="form-check d-inline-block m-0">{{ f.done }}</div></td>
+    <td>{{ f.score }}{% for e in f.score.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+    <td>{{ f.how_achieved }}</td><td>{{ f.observations }}</td>
+    <td class="text-center">{% if f.instance.pk %}<div class="form-check d-inline-block m-0">{{ f.DELETE }}</div>{% else %}<button type="button" class="btn btn-sm btn-link text-danger js-remove"><i class="bi bi-x-circle"></i></button>{% endif %}</td>
+    {% else %}
+    <td>{{ f.instance.objective }}</td>{% if team %}<td>{{ f.instance.responsible.full_name|default:"—" }}</td>{% endif %}
+    <td class="text-center">{% if f.instance.done %}<i class="bi bi-check-square-fill text-success fs-5"></i>{% else %}<i class="bi bi-square text-muted fs-5"></i>{% endif %}</td>
+    <td class="text-center">{{ f.instance.score|num:1|default:"—" }}</td><td class="small">{{ f.instance.how_achieved|linebreaksbr }}</td><td class="small">{{ f.instance.observations|linebreaksbr }}</td>
+    {% endif %}
+  </tr>
+  {% empty %}{% if not can_edit %}<tr><td colspan="8" class="text-center text-muted py-3">Todavía no se cargaron metas.</td></tr>{% endif %}{% endfor %}
+  </tbody>
+</table></div></div>
+{% if can_edit %}
+<template id="emptyRow"><tr class="goal-row">{% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+  <td class="text-muted small js-num"></td><td>{{ formset.empty_form.objective }}</td>{% if team %}<td>{{ formset.empty_form.responsible }}</td>{% endif %}
+  <td class="text-center"><div class="form-check d-inline-block m-0">{{ formset.empty_form.done }}</div></td><td>{{ formset.empty_form.score }}</td>
+  <td>{{ formset.empty_form.how_achieved }}</td><td>{{ formset.empty_form.observations }}</td>
+  <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger js-remove"><i class="bi bi-x-circle"></i></button></td></tr></template>
+<div class="d-flex flex-wrap gap-2 mt-2">
+  <button type="button" class="btn btn-sm btn-outline-primary" id="addGoal"><i class="bi bi-plus-lg me-1"></i>Agregar meta</button>
+  <button class="btn btn-sm btn-primary ms-auto"><i class="bi bi-save me-1"></i>Guardar metas</button>
+</div>
+<p class="small text-muted mt-2">Tildá «Cumplido» en las metas logradas, calificá de 1 a {{ score_max }} y registrá cómo se cumplió. Las metas con «Quitar» tildado se eliminan al guardar.</p>
+{% endif %}
+</form>
+{% if plan.notes %}<div class="card mt-3"><div class="card-body small"><strong>Comentario general:</strong> {{ plan.notes|linebreaksbr }}</div></div>{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if can_edit %}
+<script>
+(function () {
+  const rows = document.getElementById("goalRows"), total = document.getElementById("id_goals-TOTAL_FORMS");
+  const tpl = document.getElementById("emptyRow").innerHTML;
+  function renumber() { let n = 0; rows.querySelectorAll(".goal-row").forEach(r => { if (r.style.display !== "none") r.querySelector(".js-num").textContent = ++n; }); }
+  function add() {
+    const i = parseInt(total.value, 10);
+    rows.insertAdjacentHTML("beforeend", tpl.replace(/__prefix__/g, i));
+    total.value = i + 1; renumber();
+    rows.lastElementChild.querySelector('textarea[name$="-objective"]').focus();
+  }
+  document.getElementById("addGoal").addEventListener("click", add);
+  rows.addEventListener("click", function (ev) {
+    const btn = ev.target.closest(".js-remove"); if (!btn) return;
+    const row = btn.closest(".goal-row");
+    row.querySelectorAll("textarea, input:not([type=hidden])").forEach(i => { if (i.type === "checkbox") i.checked = false; else i.value = ""; });
+    row.style.display = "none"; renumber();
+  });
+  rows.addEventListener("change", function (ev) {
+    if (ev.target.name && ev.target.name.endsWith("-done")) ev.target.closest(".goal-row").classList.toggle("table-success", ev.target.checked);
+  });
+  if (!rows.querySelector(".goal-row")) { for (let k = 0; k < 3; k++) add(); }
+})();
+</script>
+{% endif %}
+{% endblock %}

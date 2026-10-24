@@ -23,7 +23,7 @@ admin.site.register(apps.get_model("core", "Role"), inlines=[RolePermissionInlin
 for label in ["core.CompanySettings", "core.AuditLog"]:
     admin.site.register(apps.get_model(label))
 
-for app_label in ["empleados", "licencias", "asistencia", "reclutamiento", "onboarding", "anuncios", "pagos"]:
+for app_label in ["empleados", "licencias", "asistencia", "reclutamiento", "onboarding", "anuncios", "pagos", "evaluaciones"]:
     for model in apps.get_app_config(app_label).get_models():
         try:
             admin.site.register(model)

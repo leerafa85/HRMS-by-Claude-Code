@@ -143,6 +143,21 @@ class Command(BaseCommand):
         st.items.create(concept="Vacaciones no gozadas", kind="haber", amount=Decimal("410000"))
         st.items.create(concept="Aportes jubilatorios", kind="descuento", amount=Decimal("150000"))
 
+        from apps.evaluaciones.models import GoalPlan, current_period_number
+
+        team = GoalPlan.objects.create(period_type="trimestral", year=today.year,
+                                       period_number=current_period_number("trimestral", today),
+                                       scope="equipo", department=depts["Comercial"], evaluator="Lucas García")
+        team.goals.create(order=0, objective="Superar $ 50 millones de ventas en el trimestre", responsible=employees[5])
+        team.goals.create(order=1, objective="Sumar 20 clientes nuevos", responsible=employees[6], done=True, score=Decimal(9),
+                          how_achieved="Campaña de referidos y visitas a comercios de la zona")
+        team.goals.create(order=2, objective="Reducir reclamos de clientes un 15 %", responsible=employees[7])
+        personal = GoalPlan.objects.create(period_type="mensual", year=today.year, period_number=today.month,
+                                           scope="personal", employee=employees[6], evaluator="Lucas García")
+        personal.goals.create(order=0, objective="Completar la capacitación de producto", done=True, score=Decimal(8),
+                              how_achieved="Terminó los 4 módulos online", observations="Muy buena predisposición")
+        personal.goals.create(order=1, objective="Cerrar 10 ventas mayoristas")
+
         generate_vacation_balances(today.year)
         vac = LeaveType.objects.get(code="vacaciones")
         sick = LeaveType.objects.get(code="enfermedad")

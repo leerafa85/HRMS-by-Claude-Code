@@ -36,6 +36,7 @@
   {% if perm.salary %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#salario">Salario</button></li>{% endif %}
   {% if perm.leave %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#licencias">Vacaciones y licencias</button></li>{% endif %}
   {% if perm.attendance %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#asistencia">Asistencia</button></li>{% endif %}
+  {% if perm.evaluations %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#evaluaciones">Evaluaciones</button></li>{% endif %}
   {% if perm.payments %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pagos">Adelantos y liquidación</button></li>{% endif %}
   {% if perm.onboarding %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#onboarding">Onboarding</button></li>{% endif %}
 </ul>
@@ -176,6 +177,18 @@
     <div class="col-lg-4"><div class="card"><div class="card-header">Llegadas tarde {% now "Y" %} ({{ tardies|length }})</div><ul class="list-group list-group-flush small">{% for t in tardies %}<li class="list-group-item">{{ t.date|date:"d/m/Y" }} · {{ t.arrival_time|time:"H:i" }} ({{ t.minutes_late }} min){% if t.justified %} <span class="badge text-bg-success">Just.</span>{% endif %}</li>{% empty %}<li class="list-group-item text-muted">Sin llegadas tarde.</li>{% endfor %}</ul></div></div>
     <div class="col-lg-4"><div class="card"><div class="card-header">Horas extras {% now "Y" %}</div><ul class="list-group list-group-flush small">{% for o in overtimes %}<li class="list-group-item">{{ o.date|date:"d/m/Y" }} · {{ o.hours|num:2 }} h al {{ o.rate }} % · {{ o.get_status_display }}</li>{% empty %}<li class="list-group-item text-muted">Sin horas extras.</li>{% endfor %}</ul></div></div>
   </div>
+</div>
+{% endif %}
+
+{% if perm.evaluations %}
+<div class="tab-pane fade" id="evaluaciones">
+  {% if perm.evaluations_edit and not self_view %}<div class="mb-2 d-flex flex-wrap gap-2">
+    <a href="{% url 'evaluaciones:plan_create' %}?tipo=mensual&persona={{ employee.pk }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo plan de metas</a></div>{% endif %}
+  <div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th>Tipo</th><th>Período</th><th>Metas de</th><th>Cumplidas</th><th>Avance</th><th>Promedio</th><th>Estado</th></tr></thead><tbody>
+    {% for p in goal_plans %}<tr><td><a href="{% url 'evaluaciones:plan_detail' p.pk %}">{{ p.get_period_type_display }}</a></td><td>{{ p.period_label }}</td><td>{% if p.scope == "equipo" %}Equipo {{ p.department }}{% else %}Personal{% endif %}</td><td>{{ p.done_goals }} de {{ p.total_goals }}</td><td style="min-width:110px"><div class="progress" style="height:8px"><div class="progress-bar bg-success" style="width:{{ p.progress }}%"></div></div><span class="small">{{ p.progress }} %</span></td><td>{{ p.average_score|num:2|default:"—" }}</td><td>{{ p.get_status_display }}</td></tr>
+    {% empty %}<tr><td colspan="7" class="small text-muted">Sin metas cargadas.</td></tr>{% endfor %}
+  </tbody></table></div></div>
 </div>
 {% endif %}
 
