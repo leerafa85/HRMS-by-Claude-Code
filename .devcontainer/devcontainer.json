@@ -3,7 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
   "containerEnv": {
     "HRMS_ADMIN_USER": "admin",
-    "HRMS_ADMIN_PASSWORD": "Admin1234!"
+    "HRMS_ADMIN_PASSWORD": "admin1234"
   },
   "postCreateCommand": "pip install -r requirements.txt && python manage.py migrate && python manage.py inicializar && python manage.py datos_demo",
   "postAttachCommand": "git pull --ff-only || true; pip install -q -r requirements.txt && python manage.py migrate --noinput && python manage.py inicializar && python manage.py runserver 0.0.0.0:8000",

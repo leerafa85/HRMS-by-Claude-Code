@@ -6,6 +6,8 @@ from django.db import transaction
 from apps.core.models import CompanySettings, Role
 from apps.core.modules import DEFAULT_ROLES, Level, Module
 
+CODESPACES_ADMIN_PASSWORD = "admin1234"
+
 LEAVE_TYPES = [
     # nombre, código, clase, color, con goce, cómputo, días/evento, tope anual, saldo, comprobante, aprobación, autogestión, ref
     ("Vacaciones", "vacaciones", "vacaciones", "#2b6cb0", True, "corridos", None, None, True, False, True, True,
@@ -110,6 +112,9 @@ class Command(BaseCommand):
 
         username = os.environ.get("HRMS_ADMIN_USER") or os.environ.get("DJANGO_SUPERUSER_USERNAME")
         password = os.environ.get("HRMS_ADMIN_PASSWORD") or os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+        if os.environ.get("CODESPACE_NAME"):
+            # Entorno de prueba en GitHub Codespaces: credenciales fijas y simples.
+            username, password = "admin", CODESPACES_ADMIN_PASSWORD
         email = os.environ.get("HRMS_ADMIN_EMAIL") or os.environ.get("DJANGO_SUPERUSER_EMAIL", "")
         if not username or not password:
             if not User.objects.filter(is_superuser=True).exists():
@@ -118,7 +123,14 @@ class Command(BaseCommand):
                     "'python manage.py createsuperuser'."
                 ))
             return
-        if User.objects.filter(username=username).exists():
+        existing = User.objects.filter(username__iexact=username).first()
+        if existing:
+            # Solo en el entorno de prueba (Codespaces) se restablece la clave al valor configurado.
+            if os.environ.get("CODESPACE_NAME") and not existing.check_password(password):
+                existing.set_password(password)
+                existing.is_active = True
+                existing.save(update_fields=["password", "is_active"])
+                self.stdout.write(f"  Clave del administrador de prueba restablecida: {username}")
             return
         User.objects.create_superuser(username=username, email=email, password=password, first_name="Administrador")
         self.stdout.write(f"  Usuario administrador creado: {username}")

@@ -43,7 +43,7 @@ Sin instalar nada:
 2. **Code → pestaña Codespaces → Create codespace on main**.
 3. Esperá unos minutos: se instalan las dependencias y se cargan los datos demo automáticamente.
 4. Cuando aparezca el aviso del puerto **8000**, tocá **Open in Browser** (o abrí la pestaña *Ports* y el ícono del globo en el puerto 8000).
-5. Ingresá con `admin` / `Admin1234!` o con los usuarios demo `rrhh`, `jefe`, `empleado` (clave `Demo1234!`).
+5. Ingresá con `admin` / `admin1234` o con los usuarios demo `rrhh`, `jefe`, `empleado` (clave `Demo1234!`).
 
 Si el servidor no está corriendo, en la terminal del Codespace ejecutá `python manage.py runserver 0.0.0.0:8000`.
 Cuando termines, detené el Codespace (menú *Codespaces → Stop*) para no consumir la cuota mensual gratuita.
