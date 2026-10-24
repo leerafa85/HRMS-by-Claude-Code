@@ -1,0 +1,17 @@
+{
+  "name": "HRMS (prueba en Codespaces)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "containerEnv": {
+    "HRMS_ADMIN_USER": "admin",
+    "HRMS_ADMIN_PASSWORD": "Admin1234!"
+  },
+  "postCreateCommand": "pip install -r requirements.txt && python manage.py migrate && python manage.py inicializar && python manage.py datos_demo",
+  "postAttachCommand": "python manage.py runserver 0.0.0.0:8000",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "HRMS", "onAutoForward": "openBrowser" }
+  },
+  "customizations": {
+    "vscode": { "extensions": ["ms-python.python"] }
+  }
+}

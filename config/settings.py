@@ -39,6 +39,12 @@ CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
     CSRF_TRUSTED_ORIGINS.append("https://" + os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
+# GitHub Codespaces: habilita la URL pública del puerto reenviado (p. ej. desde un iPad).
+if os.environ.get("CODESPACE_NAME"):
+    _cs_domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
+    ALLOWED_HOSTS.append(f".{_cs_domain}")
+    CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ['CODESPACE_NAME']}-8000.{_cs_domain}")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

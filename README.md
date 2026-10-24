@@ -35,6 +35,19 @@ Cada rol define un nivel por módulo; si un usuario tiene varios roles, se toma 
 - Sin importar el rol: todo usuario vinculado a un legajo accede a su autogestión, y los jefes directos aprueban las solicitudes de su equipo.
 - El **administrador total** (superusuario) tiene acceso a todo y es el único que puede modificar a otros administradores totales.
 
+## Probarlo desde el navegador (iPad, tablet o cualquier PC) con GitHub Codespaces
+
+Sin instalar nada:
+
+1. Abrí el repositorio en GitHub desde el navegador.
+2. **Code → pestaña Codespaces → Create codespace on main**.
+3. Esperá unos minutos: se instalan las dependencias y se cargan los datos demo automáticamente.
+4. Cuando aparezca el aviso del puerto **8000**, tocá **Open in Browser** (o abrí la pestaña *Ports* y el ícono del globo en el puerto 8000).
+5. Ingresá con `admin` / `Admin1234!` o con los usuarios demo `rrhh`, `jefe`, `empleado` (clave `Demo1234!`).
+
+Si el servidor no está corriendo, en la terminal del Codespace ejecutá `python manage.py runserver 0.0.0.0:8000`.
+Cuando termines, detené el Codespace (menú *Codespaces → Stop*) para no consumir la cuota mensual gratuita.
+
 ## Probarlo en tu computadora
 
 Requisitos: Python 3.11 o superior.
