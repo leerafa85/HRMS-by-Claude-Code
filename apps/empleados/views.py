@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
+from django.forms import inlineformset_factory
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -19,6 +20,7 @@ from apps.core.crud import (
     HRUpdateView,
     ModuleRequiredMixin,
 )
+from apps.core.formatting import format_ars
 from apps.core.models import AuditLog
 from apps.core.modules import Level, Module
 from apps.reportes.excel import excel_response
@@ -31,6 +33,8 @@ from .forms import (
     DocumentForm,
     EmergencyContactForm,
     EmployeeForm,
+    ExtraCostForm,
+    ExtraCostFormSet,
     FamilyMemberForm,
     IPCForm,
     LocationForm,
@@ -51,6 +55,7 @@ from .models import (
     Position,
     SalaryAdjustment,
     SalaryAdjustmentPlan,
+    SalaryExtraCost,
 )
 
 STATUS_BADGES = {"activo": "success", "prueba": "info", "licencia": "warning", "baja": "secondary"}
@@ -98,7 +103,7 @@ def employee_export(request):
                "Puesto", "Sede", "Jefe directo", "Ingreso", "Antigüedad", "Modalidad", "CCT", "Categoría",
                "Obra social", "Estado", "Egreso"]
     if can_salary:
-        headers.append("Salario bruto vigente")
+        headers += ["Salario neto vigente", "Costos adicionales", "Sueldo bruto vigente"]
     rows = []
     for e in Employee.objects.select_related("department", "position", "location", "manager"):
         row = [e.file_number, e.last_name, e.first_name, e.dni, e.cuil, e.birth_date, e.work_email, e.mobile,
@@ -106,7 +111,8 @@ def employee_export(request):
                e.hire_date, e.seniority_display, e.get_contract_type_display(), e.union_agreement, e.category,
                e.health_insurance, e.get_status_display(), e.termination_date]
         if can_salary:
-            row.append(e.current_salary)
+            adj = e.current_adjustment
+            row += [adj.new_salary, adj.extras_total, adj.gross_salary] if adj else [None, None, None]
         rows.append(row)
     return excel_response("empleados", "Empleados", headers, rows)
 
@@ -176,7 +182,7 @@ def employee_context(employee, user, self_view=False):
         ctx["documents"] = docs
         ctx["upload_form"] = MultiDocumentUploadForm() if can["documents_edit"] else None
     if can["salary"]:
-        ctx["salaries"] = employee.salary_adjustments.all()
+        ctx["salaries"] = employee.salary_adjustments.prefetch_related("extra_costs")
         ctx["salary_row"] = ajustes.compute(employee)
     if can["leave"]:
         ctx["balances"] = LeaveBalance.objects.filter(employee=employee).select_related("leave_type").order_by("-year")
@@ -481,8 +487,10 @@ class SalaryList(HRListView):
     columns = [
         Column("Empleado", "employee", link=True),
         Column("Vigencia", "effective_date"),
-        Column("Anterior", "previous_salary", kind="money"),
-        Column("Nuevo", "new_salary", kind="money"),
+        Column("Neto anterior", "previous_salary", kind="money"),
+        Column("Salario neto", "new_salary", kind="money"),
+        Column("Costos adicionales", lambda a: "; ".join(f"{c.concept}: {format_ars(c.amount)}" for c in a.extra_costs.all()) or "—"),
+        Column("Sueldo bruto", "gross_salary", kind="money"),
         Column("Variación %", lambda a: f"{a.variation_pct:.2f} %".replace(".", ",") if a.variation_pct is not None else "—"),
         Column("Motivo", "reason"),
         Column("Registrado por", "created_by"),
@@ -493,31 +501,70 @@ class SalaryList(HRListView):
     ]
 
     def get_queryset(self):
-        return super().get_queryset().select_related("employee", "created_by")
+        return super().get_queryset().select_related("employee", "created_by").prefetch_related("extra_costs")
 
 
-class SalaryCreate(HRCreateView):
+class _SalaryFormMixin:
+    """Formulario de salario neto + costos adicionales (uno o varios)."""
+
     model = SalaryAdjustment
     form_class = SalaryAdjustmentForm
     module = Module.SALARIOS
     url_prefix = "empleados:salario"
-    title = "Nuevo ajuste salarial"
+    template_name = "empleados/salary_form.html"
+
+    def get_success_url(self):
+        nxt = self.request.GET.get("next", "")
+        if nxt.startswith("/") and not nxt.startswith("//"):
+            return nxt
+        return self.url_for("list")
+
+    def previous_extras(self):
+        return []
+
+    def get_formset(self):
+        instance = self.object or SalaryAdjustment()
+        if self.request.method == "POST":
+            return ExtraCostFormSet(self.request.POST, instance=instance, prefix="extras")
+        initial = self.previous_extras()
+        factory = inlineformset_factory(SalaryAdjustment, SalaryExtraCost, form=ExtraCostForm,
+                                        formset=ExtraCostFormSet, extra=len(initial), can_delete=True)
+        return factory(instance=instance, prefix="extras", initial=initial)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.setdefault("formset", self.get_formset())
+        ctx["carried_over"] = self.request.method != "POST" and bool(self.previous_extras())
+        return ctx
+
+    def form_valid(self, form):
+        formset = ExtraCostFormSet(self.request.POST, instance=form.instance, prefix="extras")
+        if not formset.is_valid():
+            return self.render_to_response(self.get_context_data(form=form, formset=formset))
+        with transaction.atomic():
+            response = super().form_valid(form)
+            formset.instance = self.object
+            formset.save()
+        return response
+
+
+class SalaryCreate(_SalaryFormMixin, HRCreateView):
+    title = "Nuevo salario / ajuste salarial"
 
     def get_initial(self):
         return {"employee": self.request.GET.get("empleado"), "effective_date": datetime.date.today().replace(day=1)}
 
-    def get_success_url(self):
-        return self.url_for("list")
+    def previous_extras(self):
+        """Al crear un ajuste se proponen los costos adicionales del registro anterior del empleado."""
+        emp_id = self.request.GET.get("empleado", "")
+        if not emp_id.isdigit():
+            return []
+        last = SalaryAdjustment.objects.filter(employee_id=emp_id).order_by("-effective_date", "-id").first()
+        return [{"concept": c.concept, "amount": c.amount} for c in last.extra_costs.all()] if last else []
 
 
-class SalaryUpdate(HRUpdateView):
-    model = SalaryAdjustment
-    form_class = SalaryAdjustmentForm
-    module = Module.SALARIOS
-    url_prefix = "empleados:salario"
-
-    def get_success_url(self):
-        return self.url_for("list")
+class SalaryUpdate(_SalaryFormMixin, HRUpdateView):
+    title = "Editar salario / ajuste salarial"
 
 
 class SalaryDelete(HRDeleteView):
@@ -543,12 +590,15 @@ def salary_bulk(request):
             qs = qs.filter(union_agreement__iexact=data["union_agreement"].strip())
         factor = 1 + data["percent"] / Decimal(100)
         for e in qs:
-            current = e.current_salary
-            if current:
-                preview.append((e, current, (current * factor).quantize(Decimal("0.01"))))
+            base = e.current_adjustment
+            if base:
+                current = base.new_salary
+                new = (current * factor).quantize(Decimal("0.01"))
+                extras = base.extras_total
+                preview.append((e, current, new, extras, new + extras, base))
         if "confirmar" in request.POST:
             with transaction.atomic():
-                for e, current, new in preview:
+                for e, current, new, _extras, _gross, base in preview:
                     adj = SalaryAdjustment(
                         employee=e, effective_date=data["effective_date"], previous_salary=current, new_salary=new,
                         reason=data["reason"], notes=data["notes"] or f"Ajuste masivo {data['percent']} %",
@@ -557,6 +607,7 @@ def salary_bulk(request):
                     if data["attachment"]:
                         adj.attachment = data["attachment"]
                     adj.save()
+                    adj.copy_extra_costs_from(base)
             AuditLog.objects.create(
                 user=request.user, action=AuditLog.Action.CREATE, model="ajuste salarial",
                 description=f"Ajuste masivo {data['percent']} % a {len(preview)} empleados",
@@ -723,11 +774,13 @@ def upcoming_adjustments(request):
         return redirect(request.get_full_path())
 
     if request.GET.get("exportar"):
-        headers = ["Legajo", "Empleado", "Área", "Esquema", "Último ajuste", "Salario actual", "Próximo ajuste",
-                   "Días restantes", "Salario estimado", "Variación %", "Estado", "IPC faltante"]
+        headers = ["Legajo", "Empleado", "Área", "Esquema", "Último ajuste", "Salario neto actual", "Costos adicionales",
+                   "Sueldo bruto actual", "Próximo ajuste", "Días restantes", "Neto estimado", "Bruto estimado",
+                   "Variación %", "Estado", "IPC faltante"]
         data = [[r.employee.file_number, str(r.employee), str(r.employee.department or ""),
                  r.plan.summary if r.plan else "", r.last.effective_date if r.last else None, r.base_salary,
-                 r.next_date, r.days_left, None if r.missing_ipc else r.new_salary,
+                 r.extras, r.gross_now, r.next_date, r.days_left, None if r.missing_ipc else r.new_salary,
+                 None if r.missing_ipc else r.gross_new,
                  round(r.pct, 2) if r.pct is not None and not r.missing_ipc else None,
                  UPCOMING_STATUS[r.status][0], r.ipc_missing_text] for r in rows]
         return excel_response("proximos_ajustes", "Próximos ajustes", headers, data)

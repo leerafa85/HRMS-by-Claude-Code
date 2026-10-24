@@ -30,10 +30,10 @@
   <td><a href="{% url 'empleados:empleado_detail' r.employee.pk %}#salario">{{ r.employee }}</a><div class="small text-muted">{{ r.employee.department|default:"" }}</div></td>
   <td class="small">{% if r.plan %}{{ r.plan.summary }}{% else %}<span class="text-muted">Sin esquema</span>{% endif %}</td>
   <td class="small">{% if r.last %}{{ r.last.effective_date|date:"d/m/Y" }}<div class="text-muted">{{ r.last.get_reason_display }}</div>{% else %}—{% endif %}</td>
-  <td class="text-end text-nowrap">{{ r.base_salary|ars }}</td>
+  <td class="text-end text-nowrap">{{ r.base_salary|ars }}{% if r.extras %}<div class="small text-muted">Bruto {{ r.gross_now|ars }}</div>{% endif %}</td>
   <td class="text-nowrap">{{ r.next_date|date:"d/m/Y"|default:"—" }}</td>
   <td class="text-center">{% if r.days_left is not None %}<span class="badge text-bg-{{ info.1 }}">{% if r.days_left < 0 %}Vencido hace {{ r.days_left|stringformat:"d"|cut:"-" }} d{% elif r.days_left == 0 %}Hoy{% else %}{{ r.days_left }} d{% endif %}</span>{% else %}<span class="badge text-bg-light">{{ info.0 }}</span>{% endif %}</td>
-  <td class="text-end text-nowrap">{% if r.missing_ipc %}<a href="{% url 'empleados:ipc_list' %}" class="small text-danger" title="Cargá el IPC de esos meses">Falta IPC<br>{{ r.ipc_missing_text }}</a>{% elif r.new_salary %}{{ r.new_salary|ars }}<div class="small text-muted">+{{ r.pct|num:2 }} %</div>{% endif %}</td>
+  <td class="text-end text-nowrap">{% if r.missing_ipc %}<a href="{% url 'empleados:ipc_list' %}" class="small text-danger" title="Cargá el IPC de esos meses">Falta IPC<br>{{ r.ipc_missing_text }}</a>{% elif r.new_salary %}{{ r.new_salary|ars }}<div class="small text-muted">+{{ r.pct|num:2 }} %{% if r.extras %} · bruto {{ r.gross_new|ars }}{% endif %}</div>{% endif %}</td>
   <td class="text-end text-nowrap">{% if can_edit %}<a href="{% url 'empleados:esquema_edit' r.employee.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-link px-1" title="{% if r.plan %}Editar esquema{% else %}Configurar esquema{% endif %}"><i class="bi bi-{% if r.plan %}gear{% else %}plus-circle{% endif %}"></i></a>{% endif %}
     {% if can_apply and r.can_apply %}<button name="empleado" value="{{ r.employee.pk }}" class="btn btn-sm btn-outline-success" data-confirm="¿Registrar el ajuste de {{ r.employee.full_name }} a {{ r.new_salary|ars }} desde el {{ r.next_date|date:'d/m/Y' }}?">Aplicar</button>{% endif %}</td>
 </tr>{% endwith %}

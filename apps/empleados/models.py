@@ -1,6 +1,7 @@
 import calendar
 import datetime
 import os
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -280,6 +281,17 @@ class Employee(models.Model):
         return " y ".join(parts)
 
     @property
+    def current_adjustment(self):
+        return self.salary_adjustments.filter(effective_date__lte=datetime.date.today()).order_by(
+            "-effective_date", "-id"
+        ).first()
+
+    @property
+    def current_gross_salary(self):
+        adj = self.current_adjustment
+        return adj.gross_salary if adj else None
+
+    @property
     def current_salary(self):
         adj = self.salary_adjustments.filter(effective_date__lte=datetime.date.today()).order_by(
             "-effective_date", "-id"
@@ -406,8 +418,8 @@ class SalaryAdjustment(models.Model):
         Employee, on_delete=models.CASCADE, related_name="salary_adjustments", verbose_name="empleado"
     )
     effective_date = models.DateField("vigencia desde")
-    previous_salary = models.DecimalField("salario anterior ($)", max_digits=14, decimal_places=2, null=True, blank=True)
-    new_salary = models.DecimalField("nuevo salario bruto ($)", max_digits=14, decimal_places=2)
+    previous_salary = models.DecimalField("salario neto anterior ($)", max_digits=14, decimal_places=2, null=True, blank=True)
+    new_salary = models.DecimalField("salario neto ($)", max_digits=14, decimal_places=2)
     reason = models.CharField("motivo", max_length=20, choices=Reason.choices, default=Reason.PARITARIA)
     notes = models.TextField("observaciones", blank=True)
     attachment = models.FileField(
@@ -443,6 +455,39 @@ class SalaryAdjustment(models.Model):
         if not self.previous_salary:
             return None
         return (self.new_salary - self.previous_salary) / self.previous_salary * 100
+
+    @property
+    def extras_total(self):
+        return sum((c.amount for c in self.extra_costs.all()), Decimal(0))
+
+    @property
+    def gross_salary(self):
+        """Sueldo bruto = salario neto + costos adicionales."""
+        return self.new_salary + self.extras_total
+
+    def copy_extra_costs_from(self, other):
+        """Replica los costos adicionales de otro registro (se mantienen al ajustar el salario)."""
+        if other is None:
+            return
+        SalaryExtraCost.objects.bulk_create(
+            SalaryExtraCost(adjustment=self, concept=c.concept, amount=c.amount) for c in other.extra_costs.all()
+        )
+
+
+class SalaryExtraCost(models.Model):
+    """Costo adicional pactado que se suma al salario neto (acuerdos, conceptos fijos, etc.)."""
+
+    adjustment = models.ForeignKey(SalaryAdjustment, on_delete=models.CASCADE, related_name="extra_costs")
+    concept = models.CharField("concepto", max_length=150)
+    amount = models.DecimalField("importe ($)", max_digits=14, decimal_places=2)
+
+    class Meta:
+        verbose_name = "costo adicional"
+        verbose_name_plural = "costos adicionales"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.concept}: {self.amount}"
 
 
 def add_months(date, months):

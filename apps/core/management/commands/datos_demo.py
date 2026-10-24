@@ -82,6 +82,11 @@ class Command(BaseCommand):
             SalaryAdjustment.objects.create(employee=e, effective_date=datetime.date(today.year, 7, 1),
                                             new_salary=(base * Decimal("1.12")).quantize(Decimal("0.01")),
                                             reason=SalaryAdjustment.Reason.PARITARIA, notes="Paritaria 2.º semestre")
+            if i in (1, 5, 8):
+                last = e.salary_adjustments.order_by("-effective_date").first()
+                last.extra_costs.create(concept="Acuerdo de permanencia", amount=Decimal("120000"))
+                if i == 5:
+                    last.extra_costs.create(concept="Viáticos fijos", amount=Decimal("80000"))
             employees.append(e)
         for d in depts.values():
             head = next((e for e in employees if e.department == d and e.position.name.startswith("Jef")), None)

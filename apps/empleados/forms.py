@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django import forms
+from django.forms import inlineformset_factory
 
 from apps.core.forms import DATE, TIME, BaseForm, BaseModelForm
 from apps.core.validators import validate_document
@@ -16,12 +17,13 @@ from .models import (
     Position,
     SalaryAdjustment,
     SalaryAdjustmentPlan,
+    SalaryExtraCost,
 )
 
 
 class EmployeeForm(BaseModelForm):
     initial_salary = forms.DecimalField(
-        label="Salario bruto inicial ($)", required=False, max_digits=14, decimal_places=2,
+        label="Salario neto inicial ($)", required=False, max_digits=14, decimal_places=2,
         help_text="Opcional: registra el primer ajuste salarial (motivo «Salario de ingreso»).",
     )
 
@@ -172,13 +174,13 @@ class MultiDocumentUploadForm(BaseForm):
 class SalaryAdjustmentForm(BaseModelForm):
     percent = forms.DecimalField(
         label="o aumento porcentual (%)", required=False, max_digits=6, decimal_places=2,
-        help_text="Si completás el porcentaje, se calcula el nuevo salario sobre el vigente.",
+        help_text="Si completás el porcentaje, se calcula el nuevo salario neto sobre el vigente.",
     )
 
     class Meta:
         model = SalaryAdjustment
         fields = ["employee", "effective_date", "new_salary", "percent", "reason", "notes", "attachment"]
-        widgets = {"effective_date": DATE}
+        widgets = {"effective_date": DATE, "notes": forms.Textarea(attrs={"rows": 2})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -197,10 +199,35 @@ class SalaryAdjustmentForm(BaseModelForm):
                 data["new_salary"] = (current * (1 + pct / Decimal(100))).quantize(Decimal("0.01"))
                 self.instance.new_salary = data["new_salary"]
         if not data.get("new_salary"):
-            self.add_error("new_salary", "Indicá el nuevo salario o un porcentaje.")
+            self.add_error("new_salary", "Indicá el salario neto o un porcentaje.")
         elif data["new_salary"] <= 0:
             self.add_error("new_salary", "El salario debe ser mayor a cero.")
         return data
+
+
+class ExtraCostForm(BaseModelForm):
+    class Meta:
+        model = SalaryExtraCost
+        fields = ["concept", "amount"]
+        widgets = {"concept": forms.TextInput(attrs={"placeholder": "Ej.: Acuerdo de presentismo, viáticos fijos…"})}
+
+    def has_changed(self):
+        # Una fila cuenta si tiene algún dato: así se guardan los costos copiados del registro anterior
+        # aunque el usuario no los modifique, y se ignoran las filas que dejó vacías.
+        if self.is_bound and self.instance.pk is None:
+            return any(str(self.data.get(self.add_prefix(f), "")).strip() for f in ("concept", "amount"))
+        return super().has_changed()
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get("amount")
+        if amount is not None and amount <= 0:
+            raise forms.ValidationError("El importe debe ser mayor a cero.")
+        return amount
+
+
+ExtraCostFormSet = inlineformset_factory(
+    SalaryAdjustment, SalaryExtraCost, form=ExtraCostForm, extra=0, can_delete=True
+)
 
 
 class BulkSalaryForm(BaseForm):

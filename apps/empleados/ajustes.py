@@ -25,6 +25,15 @@ class UpcomingAdjustment:
     new_salary: Decimal | None = None
     pct: Decimal | None = None
     missing_ipc: list = field(default_factory=list)
+    extras: Decimal = Decimal(0)
+
+    @property
+    def gross_now(self):
+        return self.base_salary + self.extras if self.base_salary is not None else None
+
+    @property
+    def gross_new(self):
+        return self.new_salary + self.extras if self.new_salary is not None else None
 
     @property
     def days_left(self):
@@ -59,6 +68,7 @@ def compute(employee):
     row = UpcomingAdjustment(employee=employee, plan=plan)
     row.last = employee.salary_adjustments.order_by("-effective_date", "-id").first()
     row.base_salary = row.last.new_salary if row.last else None
+    row.extras = row.last.extras_total if row.last else Decimal(0)
     if plan:
         row.next_date = plan.next_date(row.last)
         if row.base_salary:
@@ -89,7 +99,7 @@ def apply(row, user):
             detail += f" + {plan.ipc_extra_percent:g} %"
     else:
         detail = plan.get_method_display()
-    return SalaryAdjustment.objects.create(
+    adjustment = SalaryAdjustment.objects.create(
         employee=row.employee,
         effective_date=row.next_date,
         previous_salary=row.base_salary,
@@ -98,3 +108,5 @@ def apply(row, user):
         notes=f"Ajuste programado ({plan.get_frequency_months_display().lower()}): {detail}. Variación {row.pct:.2f} %.",
         created_by=user,
     )
+    adjustment.copy_extra_costs_from(row.last)
+    return adjustment

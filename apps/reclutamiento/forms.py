@@ -51,7 +51,7 @@ class HireForm(BaseForm):
     department = forms.ModelChoiceField(label="Área", queryset=Department.objects.all(), required=False)
     position = forms.ModelChoiceField(label="Puesto", queryset=Position.objects.all(), required=False)
     location = forms.ModelChoiceField(label="Sede", queryset=Location.objects.all(), required=False)
-    salary = forms.DecimalField(label="Salario bruto inicial ($)", required=False, max_digits=14, decimal_places=2)
+    salary = forms.DecimalField(label="Salario neto inicial ($)", required=False, max_digits=14, decimal_places=2)
     onboarding_template = forms.ModelChoiceField(label="Iniciar onboarding con la plantilla", queryset=None, required=False)
 
     def __init__(self, *args, **kwargs):

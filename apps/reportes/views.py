@@ -148,21 +148,28 @@ def payroll_mass(request):
         raise PermissionDenied
     by_dept = OrderedDict()
     for e in _active().select_related("department"):
-        sal = e.current_salary
+        adj = e.current_adjustment
         key = str(e.department or "Sin área")
-        d = by_dept.setdefault(key, {"n": 0, "total": Decimal(0), "sin": 0})
+        d = by_dept.setdefault(key, {"n": 0, "net": Decimal(0), "extras": Decimal(0), "sin": 0})
         d["n"] += 1
-        if sal:
-            d["total"] += sal
+        if adj:
+            d["net"] += adj.new_salary
+            d["extras"] += adj.extras_total
         else:
             d["sin"] += 1
-    rows = [[k, v["n"], v["total"], (v["total"] / (v["n"] - v["sin"])) if v["n"] - v["sin"] else Decimal(0), v["sin"]]
-            for k, v in by_dept.items()]
-    total = sum((r[2] for r in rows), Decimal(0))
-    return {"headers": ["Área", "Empleados", "Masa salarial bruta", "Promedio", "Sin salario cargado"], "rows": rows,
-            "money_cols": [2, 3], "summary": f"Masa salarial bruta mensual total: {format_ars(total)}",
+    rows = []
+    for k, v in by_dept.items():
+        gross = v["net"] + v["extras"]
+        paid = v["n"] - v["sin"]
+        rows.append([k, v["n"], v["net"], v["extras"], gross, gross / paid if paid else Decimal(0), v["sin"]])
+    total_net = sum((r[2] for r in rows), Decimal(0))
+    total_gross = sum((r[4] for r in rows), Decimal(0))
+    return {"headers": ["Área", "Empleados", "Salarios netos", "Costos adicionales", "Sueldos brutos", "Promedio bruto",
+                        "Sin salario cargado"], "rows": rows,
+            "money_cols": [2, 3, 4, 5],
+            "summary": f"Total mensual: neto {format_ars(total_net)} · sueldo bruto (neto + costos adicionales) {format_ars(total_gross)}",
             "chart": {"type": "bar", "labels": [r[0] for r in rows],
-                      "series": [{"label": "Masa salarial", "values": [float(r[2]) for r in rows]}]}}
+                      "series": [{"label": "Sueldos brutos", "values": [float(r[4]) for r in rows]}]}}
 
 
 def demographics(request):
@@ -188,7 +195,7 @@ REPORTS = OrderedDict([
     ("tardanzas", ("Llegadas tarde", "Ranking anual de tardanzas por empleado.", tardiness, Module.ASISTENCIA)),
     ("horas-extras", ("Horas extras", "Horas extras aprobadas por empleado y recargo.", overtime, Module.ASISTENCIA)),
     ("vacaciones", ("Vacaciones", "Saldos de vacaciones por empleado.", vacations, Module.LICENCIAS)),
-    ("masa-salarial", ("Masa salarial", "Salarios brutos vigentes por área (en pesos).", payroll_mass, Module.SALARIOS)),
+    ("masa-salarial", ("Masa salarial", "Salarios netos, costos adicionales y sueldos brutos vigentes por área (en pesos).", payroll_mass, Module.SALARIOS)),
 ])
 
 

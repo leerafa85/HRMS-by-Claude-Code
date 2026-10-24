@@ -1,0 +1,100 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:1000px"><div class="card-body">
+  <h1 class="h5 mb-3">{{ title }}</h1>
+  <form method="post" enctype="multipart/form-data" novalidate id="salaryForm">{% csrf_token %}
+    {% include "partials/form_errors.html" %}
+    <div class="row">
+      {% field form.employee %}{% field form.effective_date "col-md-3" %}{% field form.reason "col-md-3" %}
+      {% field form.new_salary "col-md-4" %}{% field form.percent "col-md-4" %}
+    </div>
+
+    <h2 class="h6 text-primary border-bottom pb-1 mt-2">Costos adicionales</h2>
+    <p class="small text-muted mb-2">Montos pactados que se suman al salario neto (acuerdos con la empresa, conceptos fijos, etc.). Podés cargar uno o varios.
+      {% if carried_over %}<br><strong>Se copiaron los costos adicionales del registro anterior:</strong> revisalos, modificalos o eliminalos si ya no corresponden.{% endif %}</p>
+    {{ formset.management_form }}
+    {% for e in formset.non_form_errors %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+    <div class="table-responsive"><table class="table table-sm align-middle mb-2">
+      <thead><tr><th>Concepto</th><th style="width:220px">Importe ($)</th><th style="width:90px" class="text-center">Quitar</th></tr></thead>
+      <tbody id="extraRows">
+      {% for f in formset %}
+        <tr class="extra-row">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+          <td>{{ f.concept }}{% for e in f.concept.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+          <td>{{ f.amount }}{% for e in f.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+          <td class="text-center">{% if f.instance.pk %}<div class="form-check d-inline-block">{{ f.DELETE }}</div>{% else %}<button type="button" class="btn btn-sm btn-link text-danger js-remove" title="Quitar"><i class="bi bi-x-circle"></i></button>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <template id="emptyRow"><tr class="extra-row">{% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+      <td>{{ formset.empty_form.concept }}</td><td>{{ formset.empty_form.amount }}</td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger js-remove" title="Quitar"><i class="bi bi-x-circle"></i></button></td></tr></template>
+    <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="addExtra"><i class="bi bi-plus-lg me-1"></i>Agregar costo adicional</button>
+
+    <div class="card bg-body-tertiary mb-3"><div class="card-body py-2">
+      <div class="row text-center">
+        <div class="col-4"><div class="small text-muted">Salario neto</div><div class="fs-5 fw-semibold" id="tNet">—</div></div>
+        <div class="col-4"><div class="small text-muted">+ Costos adicionales</div><div class="fs-5 fw-semibold" id="tExtras">—</div></div>
+        <div class="col-4"><div class="small text-muted">= Sueldo bruto</div><div class="fs-5 fw-bold text-primary" id="tGross">—</div></div>
+      </div>
+      <div class="small text-muted text-center" id="tNote"></div>
+    </div></div>
+
+    <div class="row">{% field form.notes "col-12" %}{% field form.attachment %}</div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary">Guardar</button>
+      {% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-link">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const rows = document.getElementById("extraRows"), total = document.getElementById("id_extras-TOTAL_FORMS");
+  const tpl = document.getElementById("emptyRow").innerHTML;
+  const fmt = n => "$ " + n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const num = v => { v = (v || "").toString().trim(); if (v.includes(",")) v = v.replace(/\./g, "").replace(",", "."); const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  function recalc() {
+    let extras = 0;
+    rows.querySelectorAll(".extra-row").forEach(r => {
+      const del = r.querySelector('input[type=checkbox][name$="-DELETE"]');
+      const amt = r.querySelector('input[name$="-amount"]');
+      if (amt && !(del && del.checked)) extras += num(amt.value);
+    });
+    const netInput = num(document.getElementById("id_new_salary").value);
+    const pct = document.getElementById("id_percent").value;
+    document.getElementById("tNote").textContent = (!netInput && pct) ? "El neto se calcula al guardar aplicando el porcentaje sobre el salario vigente." : "";
+    document.getElementById("tNet").textContent = netInput ? fmt(netInput) : "—";
+    document.getElementById("tExtras").textContent = fmt(extras);
+    document.getElementById("tGross").textContent = netInput ? fmt(netInput + extras) : "—";
+  }
+  document.getElementById("addExtra").addEventListener("click", function () {
+    const i = parseInt(total.value, 10);
+    rows.insertAdjacentHTML("beforeend", tpl.replace(/__prefix__/g, i));
+    total.value = i + 1;
+    rows.lastElementChild.querySelector('input[name$="-concept"]').focus();
+  });
+  rows.addEventListener("click", function (ev) {
+    const btn = ev.target.closest(".js-remove");
+    if (!btn) return;
+    const row = btn.closest(".extra-row");
+    row.querySelectorAll("input").forEach(i => { if (i.type !== "hidden") i.value = ""; });
+    row.style.display = "none";  // las filas vacías se ignoran al guardar
+    recalc();
+  });
+  document.getElementById("salaryForm").addEventListener("input", recalc);
+  document.getElementById("salaryForm").addEventListener("change", recalc);
+  {% if not object %}
+  const emp = document.getElementById("id_employee");
+  emp.addEventListener("change", function () {
+    if (!document.getElementById("id_new_salary").value) {
+      const url = new URL(location.href); url.searchParams.set("empleado", emp.value); location.href = url;
+    }
+  });
+  {% endif %}
+  recalc();
+})();
+</script>
+{% endblock %}
