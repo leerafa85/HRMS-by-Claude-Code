@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card mb-3" style="max-width:980px"><div class="card-body">
   <h1 class="h5">Ajuste salarial masivo (paritarias / acuerdos)</h1>
-  <p class="small text-muted">Aplica un porcentaje sobre el salario neto vigente de cada empleado activo. Los costos adicionales se mantienen sin cambios en el nuevo registro. Primero se muestra una vista previa; nada se guarda hasta confirmar.</p>
+  <p class="small text-muted">Aplica un porcentaje sobre el salario base vigente de cada empleado activo. Los costos adicionales se mantienen sin cambios en el nuevo registro. Primero se muestra una vista previa; nada se guarda hasta confirmar.</p>
   <form method="post" enctype="multipart/form-data">{% csrf_token %}{% include "partials/form_errors.html" %}
     <div class="row">{% for f in form %}{% if f|widget_type == "textarea" %}{% field f "col-12" %}{% else %}{% field f "col-md-4" %}{% endif %}{% endfor %}</div>
     <button class="btn btn-outline-primary" name="previsualizar" value="1">Previsualizar</button>
@@ -12,7 +12,7 @@
   </form>
 </div></div>
 {% if preview %}
-<div class="card" style="max-width:980px"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Legajo</th><th>Empleado</th><th class="text-end">Neto actual</th><th class="text-end">Neto nuevo</th><th class="text-end">Costos adicionales</th><th class="text-end">Sueldo bruto nuevo</th></tr></thead><tbody>
+<div class="card" style="max-width:980px"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Legajo</th><th>Empleado</th><th class="text-end">Base actual</th><th class="text-end">Base nueva</th><th class="text-end">Costos adicionales</th><th class="text-end">Total con adicionales nuevo</th></tr></thead><tbody>
 {% for e, cur, new, extras, gross, base in preview %}<tr><td>{{ e.file_number }}</td><td>{{ e }}</td><td class="text-end">{{ cur|ars }}</td><td class="text-end fw-semibold">{{ new|ars }}</td><td class="text-end">{{ extras|ars }}</td><td class="text-end fw-semibold">{{ gross|ars }}</td></tr>{% endfor %}
 </tbody></table></div></div>
 {% elif request.method == "POST" %}<div class="alert alert-info">Ningún empleado con salario vigente coincide con los filtros.</div>{% endif %}

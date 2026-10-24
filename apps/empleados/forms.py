@@ -23,7 +23,7 @@ from .models import (
 
 class EmployeeForm(BaseModelForm):
     initial_salary = forms.DecimalField(
-        label="Salario neto inicial ($)", required=False, max_digits=14, decimal_places=2,
+        label="Salario base inicial ($)", required=False, max_digits=14, decimal_places=2,
         help_text="Opcional: registra el primer ajuste salarial (motivo «Salario de ingreso»).",
     )
 
@@ -174,7 +174,7 @@ class MultiDocumentUploadForm(BaseForm):
 class SalaryAdjustmentForm(BaseModelForm):
     percent = forms.DecimalField(
         label="o aumento porcentual (%)", required=False, max_digits=6, decimal_places=2,
-        help_text="Si completás el porcentaje, se calcula el nuevo salario neto sobre el vigente.",
+        help_text="Si completás el porcentaje, se calcula el nuevo salario base sobre el vigente.",
     )
 
     class Meta:
@@ -199,7 +199,7 @@ class SalaryAdjustmentForm(BaseModelForm):
                 data["new_salary"] = (current * (1 + pct / Decimal(100))).quantize(Decimal("0.01"))
                 self.instance.new_salary = data["new_salary"]
         if not data.get("new_salary"):
-            self.add_error("new_salary", "Indicá el salario neto o un porcentaje.")
+            self.add_error("new_salary", "Indicá el salario base o un porcentaje.")
         elif data["new_salary"] <= 0:
             self.add_error("new_salary", "El salario debe ser mayor a cero.")
         return data

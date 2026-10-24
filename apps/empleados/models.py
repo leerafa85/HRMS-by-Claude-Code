@@ -418,8 +418,8 @@ class SalaryAdjustment(models.Model):
         Employee, on_delete=models.CASCADE, related_name="salary_adjustments", verbose_name="empleado"
     )
     effective_date = models.DateField("vigencia desde")
-    previous_salary = models.DecimalField("salario neto anterior ($)", max_digits=14, decimal_places=2, null=True, blank=True)
-    new_salary = models.DecimalField("salario neto ($)", max_digits=14, decimal_places=2)
+    previous_salary = models.DecimalField("salario base anterior ($)", max_digits=14, decimal_places=2, null=True, blank=True)
+    new_salary = models.DecimalField("salario base ($)", max_digits=14, decimal_places=2)
     reason = models.CharField("motivo", max_length=20, choices=Reason.choices, default=Reason.PARITARIA)
     notes = models.TextField("observaciones", blank=True)
     attachment = models.FileField(
@@ -462,7 +462,7 @@ class SalaryAdjustment(models.Model):
 
     @property
     def gross_salary(self):
-        """Sueldo bruto = salario neto + costos adicionales."""
+        """Total con adicionales = salario base + costos adicionales."""
         return self.new_salary + self.extras_total
 
     def copy_extra_costs_from(self, other):
@@ -475,7 +475,7 @@ class SalaryAdjustment(models.Model):
 
 
 class SalaryExtraCost(models.Model):
-    """Costo adicional pactado que se suma al salario neto (acuerdos, conceptos fijos, etc.)."""
+    """Costo adicional pactado que se suma al salario base (acuerdos, conceptos fijos, etc.)."""
 
     adjustment = models.ForeignKey(SalaryAdjustment, on_delete=models.CASCADE, related_name="extra_costs")
     concept = models.CharField("concepto", max_length=150)

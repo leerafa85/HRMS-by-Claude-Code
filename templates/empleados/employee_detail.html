@@ -123,7 +123,7 @@
       {% if salary_row.plan %}<strong>{{ salary_row.plan.summary }}</strong>{% if salary_row.plan.notes %}<div class="small text-muted">{{ salary_row.plan.notes }}</div>{% endif %}
         <div class="small mt-1">Próximo ajuste: <strong>{{ salary_row.next_date|date:"d/m/Y" }}</strong>
           {% if salary_row.days_left is not None %}({% if salary_row.days_left < 0 %}<span class="text-danger">vencido</span>{% else %}en {{ salary_row.days_left }} días{% endif %}){% endif %}
-          {% if salary_row.new_salary and not salary_row.missing_ipc %} · neto estimado {{ salary_row.new_salary|ars }} (+{{ salary_row.pct|num:2 }} %){% if salary_row.extras %} · bruto {{ salary_row.gross_new|ars }}{% endif %}{% endif %}
+          {% if salary_row.new_salary and not salary_row.missing_ipc %} · base estimada {{ salary_row.new_salary|ars }} (+{{ salary_row.pct|num:2 }} %){% if salary_row.extras %} · total con adicionales {{ salary_row.gross_new|ars }}{% endif %}{% endif %}
           {% if salary_row.missing_ipc %} · <span class="text-danger">falta IPC {{ salary_row.ipc_missing_text }}</span>{% endif %}</div>
       {% else %}<span class="text-muted">Sin esquema configurado.</span>{% endif %}
     </div>
@@ -131,15 +131,15 @@
   </div></div>
   {% with cur=employee.current_adjustment %}
   <div class="row g-3 mb-3">
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="small text-muted">Salario neto vigente</div><div class="fs-4 fw-semibold">{{ cur.new_salary|ars }}</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="small text-muted">Salario base vigente</div><div class="fs-4 fw-semibold">{{ cur.new_salary|ars }}</div></div></div></div>
     <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="small text-muted">Costos adicionales</div><div class="fs-4 fw-semibold">{% if cur %}{{ cur.extras_total|ars }}{% else %}—{% endif %}</div>
       {% for c in cur.extra_costs.all %}<div class="small">{{ c.concept }}: {{ c.amount|ars }}</div>{% endfor %}</div></div></div>
-    <div class="col-md-4"><div class="card h-100 border-primary"><div class="card-body"><div class="small text-muted">Sueldo bruto vigente</div><div class="fs-4 fw-bold text-primary">{% if cur %}{{ cur.gross_salary|ars }}{% else %}—{% endif %}</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100 border-primary"><div class="card-body"><div class="small text-muted">Total con adicionales vigente</div><div class="fs-4 fw-bold text-primary">{% if cur %}{{ cur.gross_salary|ars }}{% else %}—{% endif %}</div></div></div></div>
   </div>
   {% endwith %}
   <div class="card"><div class="card-header d-flex align-items-center">Historial salarial
     {% if perm.salary_edit and not self_view %}<a href="{% url 'empleados:salario_create' %}?empleado={{ employee.pk }}&next={{ request.path|urlencode }}%23salario" class="ms-auto btn btn-sm btn-outline-primary">Nuevo ajuste</a>{% endif %}</div>
-  <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Vigencia</th><th class="text-end">Neto anterior</th><th class="text-end">Salario neto</th><th>Costos adicionales</th><th class="text-end">Sueldo bruto</th><th>Variación neto</th><th>Motivo</th><th>Respaldo</th><th>Observaciones</th><th></th></tr></thead><tbody>
+  <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Vigencia</th><th class="text-end">Base anterior</th><th class="text-end">Salario base</th><th>Costos adicionales</th><th class="text-end">Total con adicionales</th><th>Variación base</th><th>Motivo</th><th>Respaldo</th><th>Observaciones</th><th></th></tr></thead><tbody>
   {% for s in salaries %}<tr><td>{{ s.effective_date|date:"d/m/Y" }}</td><td class="text-end text-nowrap">{{ s.previous_salary|ars }}</td><td class="text-end text-nowrap fw-semibold">{{ s.new_salary|ars }}</td>
     <td class="small">{% for c in s.extra_costs.all %}<div class="text-nowrap">{{ c.concept }}: {{ c.amount|ars }}</div>{% empty %}—{% endfor %}</td>
     <td class="text-end text-nowrap fw-bold">{{ s.gross_salary|ars }}</td>

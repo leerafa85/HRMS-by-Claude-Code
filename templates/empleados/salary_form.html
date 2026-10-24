@@ -11,7 +11,7 @@
     </div>
 
     <h2 class="h6 text-primary border-bottom pb-1 mt-2">Costos adicionales</h2>
-    <p class="small text-muted mb-2">Montos pactados que se suman al salario neto (acuerdos con la empresa, conceptos fijos, etc.). Podés cargar uno o varios.
+    <p class="small text-muted mb-2">Montos pactados que se suman al salario base (acuerdos con la empresa, conceptos fijos, etc.). Podés cargar uno o varios.
       {% if carried_over %}<br><strong>Se copiaron los costos adicionales del registro anterior:</strong> revisalos, modificalos o eliminalos si ya no corresponden.{% endif %}</p>
     {{ formset.management_form }}
     {% for e in formset.non_form_errors %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
@@ -34,9 +34,9 @@
 
     <div class="card bg-body-tertiary mb-3"><div class="card-body py-2">
       <div class="row text-center">
-        <div class="col-4"><div class="small text-muted">Salario neto</div><div class="fs-5 fw-semibold" id="tNet">—</div></div>
+        <div class="col-4"><div class="small text-muted">Salario base</div><div class="fs-5 fw-semibold" id="tNet">—</div></div>
         <div class="col-4"><div class="small text-muted">+ Costos adicionales</div><div class="fs-5 fw-semibold" id="tExtras">—</div></div>
-        <div class="col-4"><div class="small text-muted">= Sueldo bruto</div><div class="fs-5 fw-bold text-primary" id="tGross">—</div></div>
+        <div class="col-4"><div class="small text-muted">= Total con adicionales</div><div class="fs-5 fw-bold text-primary" id="tGross">—</div></div>
       </div>
       <div class="small text-muted text-center" id="tNote"></div>
     </div></div>
@@ -65,7 +65,7 @@
     });
     const netInput = num(document.getElementById("id_new_salary").value);
     const pct = document.getElementById("id_percent").value;
-    document.getElementById("tNote").textContent = (!netInput && pct) ? "El neto se calcula al guardar aplicando el porcentaje sobre el salario vigente." : "";
+    document.getElementById("tNote").textContent = (!netInput && pct) ? "El salario base se calcula al guardar aplicando el porcentaje sobre el salario vigente." : "";
     document.getElementById("tNet").textContent = netInput ? fmt(netInput) : "—";
     document.getElementById("tExtras").textContent = fmt(extras);
     document.getElementById("tGross").textContent = netInput ? fmt(netInput + extras) : "—";

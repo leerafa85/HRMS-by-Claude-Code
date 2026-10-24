@@ -103,7 +103,7 @@ def employee_export(request):
                "Puesto", "Sede", "Jefe directo", "Ingreso", "Antigüedad", "Modalidad", "CCT", "Categoría",
                "Obra social", "Estado", "Egreso"]
     if can_salary:
-        headers += ["Salario neto vigente", "Costos adicionales", "Sueldo bruto vigente"]
+        headers += ["Salario base vigente", "Costos adicionales", "Total con adicionales vigente"]
     rows = []
     for e in Employee.objects.select_related("department", "position", "location", "manager"):
         row = [e.file_number, e.last_name, e.first_name, e.dni, e.cuil, e.birth_date, e.work_email, e.mobile,
@@ -487,10 +487,10 @@ class SalaryList(HRListView):
     columns = [
         Column("Empleado", "employee", link=True),
         Column("Vigencia", "effective_date"),
-        Column("Neto anterior", "previous_salary", kind="money"),
-        Column("Salario neto", "new_salary", kind="money"),
+        Column("Base anterior", "previous_salary", kind="money"),
+        Column("Salario base", "new_salary", kind="money"),
         Column("Costos adicionales", lambda a: "; ".join(f"{c.concept}: {format_ars(c.amount)}" for c in a.extra_costs.all()) or "—"),
-        Column("Sueldo bruto", "gross_salary", kind="money"),
+        Column("Total con adicionales", "gross_salary", kind="money"),
         Column("Variación %", lambda a: f"{a.variation_pct:.2f} %".replace(".", ",") if a.variation_pct is not None else "—"),
         Column("Motivo", "reason"),
         Column("Registrado por", "created_by"),
@@ -505,7 +505,7 @@ class SalaryList(HRListView):
 
 
 class _SalaryFormMixin:
-    """Formulario de salario neto + costos adicionales (uno o varios)."""
+    """Formulario de salario base + costos adicionales (uno o varios)."""
 
     model = SalaryAdjustment
     form_class = SalaryAdjustmentForm
@@ -774,8 +774,8 @@ def upcoming_adjustments(request):
         return redirect(request.get_full_path())
 
     if request.GET.get("exportar"):
-        headers = ["Legajo", "Empleado", "Área", "Esquema", "Último ajuste", "Salario neto actual", "Costos adicionales",
-                   "Sueldo bruto actual", "Próximo ajuste", "Días restantes", "Neto estimado", "Bruto estimado",
+        headers = ["Legajo", "Empleado", "Área", "Esquema", "Último ajuste", "Salario base actual", "Costos adicionales",
+                   "Total con adicionales actual", "Próximo ajuste", "Días restantes", "Base estimada", "Total con adicionales estimado",
                    "Variación %", "Estado", "IPC faltante"]
         data = [[r.employee.file_number, str(r.employee), str(r.employee.department or ""),
                  r.plan.summary if r.plan else "", r.last.effective_date if r.last else None, r.base_salary,
