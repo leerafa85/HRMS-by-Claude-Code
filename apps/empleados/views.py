@@ -23,17 +23,21 @@ from apps.core.models import AuditLog
 from apps.core.modules import Level, Module
 from apps.reportes.excel import excel_response
 
+from . import ajustes
 from .forms import (
+    BulkPlanForm,
     BulkSalaryForm,
     DepartmentForm,
     DocumentForm,
     EmergencyContactForm,
     EmployeeForm,
     FamilyMemberForm,
+    IPCForm,
     LocationForm,
     MultiDocumentUploadForm,
     PositionForm,
     SalaryAdjustmentForm,
+    SalaryPlanForm,
     TerminationForm,
 )
 from .models import (
@@ -42,9 +46,11 @@ from .models import (
     Employee,
     EmployeeDocument,
     FamilyMember,
+    IPCValue,
     Location,
     Position,
     SalaryAdjustment,
+    SalaryAdjustmentPlan,
 )
 
 STATUS_BADGES = {"activo": "success", "prueba": "info", "licencia": "warning", "baja": "secondary"}
@@ -171,6 +177,7 @@ def employee_context(employee, user, self_view=False):
         ctx["upload_form"] = MultiDocumentUploadForm() if can["documents_edit"] else None
     if can["salary"]:
         ctx["salaries"] = employee.salary_adjustments.all()
+        ctx["salary_row"] = ajustes.compute(employee)
     if can["leave"]:
         ctx["balances"] = LeaveBalance.objects.filter(employee=employee).select_related("leave_type").order_by("-year")
         ctx["leave_requests"] = employee.leave_requests.select_related("leave_type")[:20]
@@ -604,3 +611,204 @@ def vcard(request, pk):
     resp = HttpResponse(body, content_type="text/vcard")
     resp["Content-Disposition"] = f'attachment; filename="{e.file_number}.vcf"'
     return resp
+
+
+# ---------------------------------------------------------------- Esquemas de ajuste y próximos ajustes
+
+
+@login_required
+def salary_plan_edit(request, employee_pk):
+    if not request.user.can(Module.SALARIOS, Level.EDITAR):
+        raise PermissionDenied
+    employee = get_object_or_404(Employee, pk=employee_pk)
+    plan = getattr(employee, "salary_plan", None) or SalaryAdjustmentPlan(employee=employee)
+    form = SalaryPlanForm(request.POST or None, instance=plan)
+    if request.method == "POST":
+        if "eliminar" in request.POST and plan.pk:
+            plan.delete()
+            AuditLog.log(request.user, AuditLog.Action.DELETE, employee, f"Esquema de ajuste eliminado: {employee}")
+            messages.success(request, "Esquema de ajuste eliminado.")
+            return redirect(reverse("empleados:empleado_detail", args=[employee.pk]) + "#salario")
+        if form.is_valid():
+            plan = form.save()
+            AuditLog.log(request.user, AuditLog.Action.UPDATE, employee, f"Esquema de ajuste: {plan.summary}")
+            messages.success(request, f"Esquema guardado. Próximo ajuste: {plan.next_date():%d/%m/%Y}.")
+            nxt = request.GET.get("next", "")
+            if nxt.startswith("/") and not nxt.startswith("//"):
+                return redirect(nxt)
+            return redirect(reverse("empleados:empleado_detail", args=[employee.pk]) + "#salario")
+    return render(request, "empleados/salary_plan_form.html", {
+        "form": form, "employee": employee, "plan": plan,
+        "title": f"Esquema de ajuste salarial · {employee.full_name}",
+        "cancel_url": reverse("empleados:empleado_detail", args=[employee.pk]) + "#salario",
+        "delete_inline": bool(plan.pk),
+    })
+
+
+@login_required
+def salary_plan_bulk(request):
+    if not request.user.can(Module.SALARIOS, Level.ADMINISTRAR):
+        raise PermissionDenied
+    form = BulkPlanForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        qs = Employee.objects.exclude(status=Employee.Status.DESVINCULADO)
+        if d["department"]:
+            qs = qs.filter(department=d["department"])
+        if d["union_agreement"]:
+            qs = qs.filter(union_agreement__iexact=d["union_agreement"].strip())
+        if d["only_without_plan"]:
+            qs = qs.filter(salary_plan__isnull=True)
+        values = {f: d[f] for f in SalaryPlanForm.Meta.fields}
+        count = 0
+        with transaction.atomic():
+            for e in qs:
+                SalaryAdjustmentPlan.objects.update_or_create(employee=e, defaults=values)
+                count += 1
+        AuditLog.objects.create(user=request.user, action=AuditLog.Action.UPDATE, model="esquema de ajuste salarial",
+                                description=f"Esquema asignado masivamente a {count} empleados")
+        messages.success(request, f"Esquema asignado a {count} empleado(s).")
+        return redirect("empleados:proximos_ajustes")
+    return render(request, "empleados/salary_plan_form.html", {
+        "form": form, "title": "Asignar esquema de ajuste a varios empleados", "bulk": True,
+        "cancel_url": reverse("empleados:proximos_ajustes"),
+    })
+
+
+UPCOMING_STATUS = {
+    "vencido": ("Vencido", "danger"),
+    "proximo": ("Próximo", "warning"),
+    "programado": ("Programado", "success"),
+    "sin_salario": ("Sin salario cargado", "secondary"),
+    "sin_esquema": ("Sin esquema", "light"),
+}
+
+
+@login_required
+def upcoming_adjustments(request):
+    if not request.user.can(Module.SALARIOS):
+        raise PermissionDenied
+    employees = Employee.objects.all()
+    area = request.GET.get("area", "")
+    if area:
+        employees = employees.filter(department_id=area)
+    rows = ajustes.upcoming(employees)
+    status = request.GET.get("estado", "")
+    horizon = request.GET.get("dias", "")
+    if status:
+        rows = [r for r in rows if r.status == status]
+    if horizon.isdigit():
+        rows = [r for r in rows if r.days_left is not None and r.days_left <= int(horizon)]
+
+    can_apply = request.user.can(Module.SALARIOS, Level.ADMINISTRAR)
+    if request.method == "POST":
+        if not can_apply:
+            raise PermissionDenied
+        ids = [int(i) for i in request.POST.getlist("empleado") if i.isdigit()]
+        if not ids:
+            messages.warning(request, "Seleccioná al menos un empleado.")
+            return redirect(request.get_full_path())
+        applied, skipped = 0, []
+        for row in ajustes.upcoming(Employee.objects.filter(pk__in=ids)):
+            if row.can_apply:
+                adj = ajustes.apply(row, request.user)
+                AuditLog.log(request.user, AuditLog.Action.CREATE, adj, f"Ajuste programado aplicado: {adj}")
+                applied += 1
+            else:
+                skipped.append(row.employee.full_name)
+        if applied:
+            messages.success(request, f"Se registraron {applied} ajuste(s) salarial(es).")
+        if skipped:
+            messages.warning(request, "No se aplicaron (falta salario o IPC): " + ", ".join(skipped))
+        return redirect(request.get_full_path())
+
+    if request.GET.get("exportar"):
+        headers = ["Legajo", "Empleado", "Área", "Esquema", "Último ajuste", "Salario actual", "Próximo ajuste",
+                   "Días restantes", "Salario estimado", "Variación %", "Estado", "IPC faltante"]
+        data = [[r.employee.file_number, str(r.employee), str(r.employee.department or ""),
+                 r.plan.summary if r.plan else "", r.last.effective_date if r.last else None, r.base_salary,
+                 r.next_date, r.days_left, None if r.missing_ipc else r.new_salary,
+                 round(r.pct, 2) if r.pct is not None and not r.missing_ipc else None,
+                 UPCOMING_STATUS[r.status][0], r.ipc_missing_text] for r in rows]
+        return excel_response("proximos_ajustes", "Próximos ajustes", headers, data)
+
+    counts = {}
+    for r in ajustes.upcoming(employees):
+        counts[r.status] = counts.get(r.status, 0) + 1
+    return render(request, "empleados/upcoming_adjustments.html", {
+        "rows": rows, "status_map": UPCOMING_STATUS, "counts": counts, "can_apply": can_apply,
+        "can_edit": request.user.can(Module.SALARIOS, Level.EDITAR),
+        "departments": Department.objects.all(), "area": area, "estado": status, "dias": horizon,
+        "last_ipc": IPCValue.objects.first(),
+    })
+
+
+class IPCList(HRListView):
+    model = IPCValue
+    module = Module.SALARIOS
+    url_prefix = "empleados:ipc"
+    title = "IPC mensual (INDEC)"
+    create_label = "Cargar mes"
+    template_name = "empleados/ipc_list.html"
+    paginate_by = 36
+    columns = [
+        Column("Mes", lambda i: i.month.strftime("%m/%Y")),
+        Column("Variación mensual", lambda i: f"{i.variation:.1f} %".replace(".", ",")),
+        Column("Fuente", "source"),
+    ]
+
+
+class IPCCreate(HRCreateView):
+    model = IPCValue
+    form_class = IPCForm
+    module = Module.SALARIOS
+    url_prefix = "empleados:ipc"
+    title = "Cargar IPC mensual"
+
+    def get_success_url(self):
+        return self.url_for("list")
+
+
+class IPCUpdate(HRUpdateView):
+    model = IPCValue
+    form_class = IPCForm
+    module = Module.SALARIOS
+    url_prefix = "empleados:ipc"
+
+    def get_success_url(self):
+        return self.url_for("list")
+
+
+class IPCDelete(HRDeleteView):
+    model = IPCValue
+    module = Module.SALARIOS
+    url_prefix = "empleados:ipc"
+
+
+@login_required
+def ipc_import(request):
+    """Importación experimental desde la API pública de ArgentinaDatos."""
+    if not request.user.can(Module.SALARIOS, Level.EDITAR) or request.method != "POST":
+        raise PermissionDenied
+    import json
+    import urllib.request
+    from decimal import Decimal
+
+    url = "https://api.argentinadatos.com/v1/finanzas/indices/inflacion"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "HRMS/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            items = json.loads(resp.read().decode("utf-8"))
+        created = 0
+        for it in items:
+            month = datetime.date.fromisoformat(str(it["fecha"])[:10]).replace(day=1)
+            if month.year < datetime.date.today().year - 3:
+                continue
+            _, was_created = IPCValue.objects.update_or_create(
+                month=month, defaults={"variation": Decimal(str(it["valor"])), "source": "INDEC vía ArgentinaDatos"}
+            )
+            created += was_created
+        messages.success(request, f"IPC importado ({created} meses nuevos). Verificá los valores con el INDEC.")
+    except Exception as e:  # red, formato inesperado, etc.
+        messages.error(request, f"No se pudo importar el IPC automáticamente ({e}). Cargalo a mano con el dato del INDEC.")
+    return redirect("empleados:ipc_list")

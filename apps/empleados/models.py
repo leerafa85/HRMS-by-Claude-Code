@@ -1,3 +1,4 @@
+import calendar
 import datetime
 import os
 
@@ -442,3 +443,173 @@ class SalaryAdjustment(models.Model):
         if not self.previous_salary:
             return None
         return (self.new_salary - self.previous_salary) / self.previous_salary * 100
+
+
+def add_months(date, months):
+    """Suma meses a una fecha ajustando el día al último del mes si hace falta (31/01 + 1 = 28/02)."""
+    month_index = date.month - 1 + months
+    year, month = date.year + month_index // 12, month_index % 12 + 1
+    day = min(date.day, calendar.monthrange(year, month)[1])
+    return datetime.date(year, month, day)
+
+
+class IPCValue(models.Model):
+    """Variación mensual del IPC nacional (INDEC), usada para ajustes por inflación."""
+
+    month = models.DateField("mes", unique=True, help_text="Se guarda el primer día del mes.")
+    variation = models.DecimalField("variación mensual (%)", max_digits=6, decimal_places=2)
+    source = models.CharField("fuente", max_length=100, blank=True, default="INDEC")
+
+    class Meta:
+        verbose_name = "IPC mensual"
+        verbose_name_plural = "IPC mensual"
+        ordering = ["-month"]
+
+    def __str__(self):
+        return f"IPC {self.month:%m/%Y}: {self.variation} %"
+
+    def save(self, *args, **kwargs):
+        self.month = self.month.replace(day=1)
+        super().save(*args, **kwargs)
+
+
+FREQUENCY_CHOICES = [
+    (1, "Mensual"), (2, "Cada 2 meses (bimestral)"), (3, "Cada 3 meses (trimestral)"),
+    (4, "Cada 4 meses (cuatrimestral)"), (5, "Cada 5 meses"), (6, "Cada 6 meses (semestral)"),
+    (7, "Cada 7 meses"), (8, "Cada 8 meses"), (9, "Cada 9 meses"), (10, "Cada 10 meses"),
+    (11, "Cada 11 meses"), (12, "Anual"), (18, "Cada 18 meses"), (24, "Cada 24 meses"),
+]
+
+
+class SalaryAdjustmentPlan(models.Model):
+    """Esquema pactado de actualización salarial de un empleado."""
+
+    class Reference(models.TextChoices):
+        INGRESO = "ingreso", "Desde la fecha de ingreso (aniversario del ingreso)"
+        CALENDARIO = "calendario", "Por fecha calendario (meses fijos del año)"
+
+    class Method(models.TextChoices):
+        IPC = "ipc", "Por IPC (inflación INDEC)"
+        PORCENTAJE = "porcentaje", "Porcentaje fijo"
+        MONTO = "monto", "Monto fijo"
+
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name="salary_plan", verbose_name="empleado")
+    frequency_months = models.PositiveSmallIntegerField("frecuencia", choices=FREQUENCY_CHOICES, default=3)
+    reference = models.CharField("se cuenta", max_length=12, choices=Reference.choices, default=Reference.CALENDARIO)
+    start_month = models.PositiveSmallIntegerField(
+        "mes del primer ajuste del año", default=1,
+        choices=[(i, m) for i, m in enumerate(["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
+                                               "Septiembre", "Octubre", "Noviembre", "Diciembre"], 1)],
+        help_text="Solo para fecha calendario. Ej.: trimestral desde enero = enero, abril, julio y octubre.",
+    )
+    method = models.CharField("método", max_length=12, choices=Method.choices, default=Method.IPC)
+    percent = models.DecimalField("porcentaje (%)", max_digits=6, decimal_places=2, null=True, blank=True,
+                                  help_text="Para «Porcentaje fijo»: aumento estimado por cada ajuste.")
+    amount = models.DecimalField("monto fijo ($)", max_digits=14, decimal_places=2, null=True, blank=True,
+                                 help_text="Para «Monto fijo»: pesos que se suman en cada ajuste.")
+    ipc_extra_percent = models.DecimalField(
+        "adicional sobre IPC (%)", max_digits=6, decimal_places=2, default=0,
+        help_text="Opcional. Ej.: IPC + 1 %.",
+    )
+    ipc_lag_months = models.PositiveSmallIntegerField(
+        "rezago del IPC (meses)", default=1, choices=[(0, "Sin rezago"), (1, "1 mes"), (2, "2 meses")],
+        help_text="El INDEC publica el IPC a mediados del mes siguiente. Con 1 mes de rezago, un ajuste trimestral "
+                  "de abril usa el IPC de diciembre, enero y febrero.",
+    )
+    active = models.BooleanField("activo", default=True)
+    notes = models.CharField("observaciones", max_length=250, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "esquema de ajuste salarial"
+        verbose_name_plural = "esquemas de ajuste salarial"
+
+    def __str__(self):
+        return f"{self.employee}: {self.summary}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.method == self.Method.PORCENTAJE and not self.percent:
+            raise ValidationError({"percent": "Indicá el porcentaje de cada ajuste."})
+        if self.method == self.Method.MONTO and not self.amount:
+            raise ValidationError({"amount": "Indicá el monto fijo de cada ajuste."})
+
+    @property
+    def summary(self):
+        from apps.core.formatting import format_ars, format_number
+
+        def pct(v):
+            return format_number(v, 2).rstrip("0").rstrip(",") + " %"
+
+        freq = dict(FREQUENCY_CHOICES).get(self.frequency_months, f"Cada {self.frequency_months} meses")
+        if self.method == self.Method.IPC:
+            how = "IPC" + (f" + {pct(self.ipc_extra_percent)}" if self.ipc_extra_percent else "")
+        elif self.method == self.Method.PORCENTAJE:
+            how = f"{pct(self.percent)} fijo"
+        else:
+            how = f"{format_ars(self.amount)} fijo"
+        if self.reference == self.Reference.INGRESO:
+            ref = "desde la fecha de ingreso"
+        else:
+            ref = f"calendario desde {self.get_start_month_display().lower()}"
+        return f"{freq} · {how} · {ref}"
+
+    # ------------------------------------------------------------- fechas
+
+    def _schedule_from(self, after):
+        """Fechas de ajuste estrictamente posteriores a `after`, en orden."""
+        freq = self.frequency_months
+        if self.reference == self.Reference.INGRESO:
+            base = self.employee.hire_date
+            k = 1
+            while True:
+                d = add_months(base, k * freq)
+                if d > after:
+                    yield d
+                k += 1
+        else:
+            d = datetime.date(after.year, after.month, 1)
+            while True:
+                if (d.month - self.start_month) % freq == 0 and d > after:
+                    yield d
+                d = add_months(d, 1)
+
+    def last_adjustment(self):
+        return self.employee.salary_adjustments.order_by("-effective_date", "-id").first()
+
+    def next_date(self, last=None):
+        last = last or self.last_adjustment()
+        after = last.effective_date if last else self.employee.hire_date - datetime.timedelta(days=1)
+        return next(self._schedule_from(after))
+
+    def ipc_months(self, adjustment_date):
+        """Meses de IPC que se acumulan para un ajuste en `adjustment_date`."""
+        first = adjustment_date.replace(day=1)
+        return [add_months(first, -(self.ipc_lag_months + i)) for i in range(self.frequency_months, 0, -1)]
+
+    def estimate(self, base_salary, adjustment_date):
+        """Devuelve (nuevo_salario, porcentaje, meses_ipc_faltantes)."""
+        from decimal import ROUND_HALF_UP, Decimal
+
+        if not base_salary:
+            return None, None, []
+        missing = []
+        if self.method == self.Method.MONTO:
+            new = base_salary + self.amount
+        else:
+            if self.method == self.Method.IPC:
+                months = self.ipc_months(adjustment_date)
+                values = dict(IPCValue.objects.filter(month__in=months).values_list("month", "variation"))
+                missing = [m for m in months if m not in values]
+                factor = Decimal(1)
+                for m in months:
+                    if m in values:
+                        factor *= 1 + values[m] / Decimal(100)
+                factor *= 1 + (self.ipc_extra_percent or 0) / Decimal(100)
+            else:
+                factor = 1 + self.percent / Decimal(100)
+            new = base_salary * factor
+        new = Decimal(new).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        pct = (new - base_salary) / base_salary * 100
+        return new, pct, missing

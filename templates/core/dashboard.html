@@ -74,6 +74,13 @@
       {% for h in holidays %}<li class="list-group-item small d-flex"><span class="me-auto">{{ h.name }}</span><span class="text-muted">{{ h.date|date:"D d/m" }}</span></li>{% empty %}<li class="list-group-item small text-muted">No hay feriados cargados.</li>{% endfor %}
       </ul></div>
 
+    {% if upcoming_adjustments %}
+    <div class="card mb-3"><div class="card-header d-flex"><span><i class="bi bi-graph-up-arrow me-1"></i>Ajustes salariales (15 días)</span><a href="{% url 'empleados:proximos_ajustes' %}" class="ms-auto small">Ver todos</a></div>
+      <ul class="list-group list-group-flush">
+      {% for r in upcoming_adjustments %}<li class="list-group-item small d-flex"><a href="{% url 'empleados:empleado_detail' r.employee.pk %}#salario" class="me-auto">{{ r.employee.full_name }}</a><span class="{% if r.days_left < 0 %}text-danger fw-semibold{% else %}text-muted{% endif %}">{% if r.days_left < 0 %}vencido {{ r.next_date|date:"d/m" }}{% else %}{{ r.next_date|date:"d/m" }}{% endif %}</span></li>{% endfor %}
+      </ul></div>
+    {% endif %}
+
     {% if trial_ending or contracts_ending %}
     <div class="card mb-3"><div class="card-header text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Vencimientos</div>
       <ul class="list-group list-group-flush">

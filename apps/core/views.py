@@ -64,6 +64,13 @@ def dashboard(request):
             contract_end_date__range=(today, today + datetime.timedelta(days=45))
         ).order_by("contract_end_date")
 
+    if user.can(Module.SALARIOS):
+        from apps.empleados import ajustes
+
+        ctx["upcoming_adjustments"] = [
+            r for r in ajustes.upcoming() if r.days_left is not None and r.days_left <= 15
+        ][:8]
+
     if user.can(Module.DOCUMENTOS):
         ctx["expiring_docs"] = EmployeeDocument.objects.filter(
             expiry_date__lte=today + datetime.timedelta(days=30), employee__in=active

@@ -11,6 +11,7 @@ MENU = [
         ("Organigrama", "empleados:organigrama", "diagram-3", None, None),
         ("Documentos", "empleados:documento_list", "folder2-open", Module.DOCUMENTOS, Level.VER),
         ("Salarios", "empleados:salario_list", "cash-coin", Module.SALARIOS, Level.VER),
+        ("Próximos ajustes", "empleados:proximos_ajustes", "graph-up-arrow", Module.SALARIOS, Level.VER),
     ]),
     ("Tiempo libre", [
         ("Solicitudes", "licencias:solicitud_list", "calendar2-check", Module.LICENCIAS, Level.VER),

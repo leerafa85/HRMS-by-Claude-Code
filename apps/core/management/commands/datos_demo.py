@@ -89,6 +89,17 @@ class Command(BaseCommand):
                 d.head = head
                 d.save()
 
+        from apps.empleados.models import SalaryAdjustmentPlan
+
+        plans = [
+            dict(frequency_months=3, reference="calendario", start_month=1, method="ipc"),
+            dict(frequency_months=1, reference="calendario", start_month=1, method="porcentaje", percent=Decimal("2.5")),
+            dict(frequency_months=6, reference="ingreso", method="monto", amount=Decimal("150000")),
+            dict(frequency_months=12, reference="ingreso", method="porcentaje", percent=Decimal("30")),
+        ]
+        for i, e in enumerate(employees[:-2]):
+            SalaryAdjustmentPlan.objects.create(employee=e, **plans[i % len(plans)])
+
         generate_vacation_balances(today.year)
         vac = LeaveType.objects.get(code="vacaciones")
         sick = LeaveType.objects.get(code="enfermedad")

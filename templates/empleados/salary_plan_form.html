@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Esquema de ajuste{% endblock %}
+{% block content %}
+<div class="card" style="max-width:980px"><div class="card-body">
+  <h1 class="h5 mb-1">{{ title }}</h1>
+  {% if employee %}<p class="small text-muted mb-3">Salario actual: <strong>{{ employee.current_salary|ars }}</strong> · Ingreso {{ employee.hire_date|date:"d/m/Y" }}{% if plan.pk %} · Próximo ajuste según el esquema actual: <strong>{{ plan.next_date|date:"d/m/Y" }}</strong>{% endif %}</p>{% endif %}
+  <form method="post" novalidate>{% csrf_token %}{% include "partials/form_errors.html" %}
+    <h2 class="h6 text-primary border-bottom pb-1">1. ¿Cada cuánto se ajusta?</h2>
+    <div class="row">{% field form.frequency_months "col-md-4" %}{% field form.reference "col-md-5" %}{% field form.start_month "col-md-3" %}</div>
+    <h2 class="h6 text-primary border-bottom pb-1">2. ¿Cómo se calcula?</h2>
+    <div class="row">{% field form.method "col-md-4" %}
+      <div class="col-md-8 row m-0 p-0">
+        <div class="col-12 js-m js-porcentaje">{% field form.percent "col-md-6 px-0" %}</div>
+        <div class="col-12 js-m js-monto">{% field form.amount "col-md-6 px-0" %}</div>
+        <div class="col-12 js-m js-ipc"><div class="row">{% field form.ipc_extra_percent %}{% field form.ipc_lag_months %}</div></div>
+      </div>
+    </div>
+    <div class="row">{% field form.notes "col-md-8" %}{% field form.active "col-md-4" %}</div>
+    {% if bulk %}
+    <h2 class="h6 text-primary border-bottom pb-1">3. ¿A quiénes?</h2>
+    <div class="row">{% field form.department "col-md-4" %}{% field form.union_agreement "col-md-4" %}{% field form.only_without_plan "col-md-4" %}</div>
+    {% endif %}
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary">Guardar</button>
+      <a href="{{ cancel_url }}" class="btn btn-link">Cancelar</a>
+      {% if delete_inline %}<button name="eliminar" value="1" class="btn btn-outline-danger ms-auto" formnovalidate data-confirm="¿Eliminar el esquema de ajuste?">Eliminar esquema</button>{% endif %}
+    </div>
+  </form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const method = document.getElementById("id_method"), ref = document.getElementById("id_reference");
+  const startMonth = document.getElementById("id_start_month").closest(".mb-3");
+  function sync() {
+    document.querySelectorAll(".js-m").forEach(el => el.style.display = el.classList.contains("js-" + method.value) ? "" : "none");
+    startMonth.style.display = ref.value === "calendario" ? "" : "none";
+  }
+  method.addEventListener("change", sync); ref.addEventListener("change", sync); sync();
+})();
+</script>
+{% endblock %}

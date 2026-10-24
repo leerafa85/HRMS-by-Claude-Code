@@ -11,9 +11,11 @@ from .models import (
     Employee,
     EmployeeDocument,
     FamilyMember,
+    IPCValue,
     Location,
     Position,
     SalaryAdjustment,
+    SalaryAdjustmentPlan,
 )
 
 
@@ -215,3 +217,37 @@ class BulkSalaryForm(BaseForm):
         if pct <= -100:
             raise forms.ValidationError("Porcentaje inválido.")
         return pct
+
+
+class SalaryPlanForm(BaseModelForm):
+    class Meta:
+        model = SalaryAdjustmentPlan
+        fields = ["frequency_months", "reference", "start_month", "method", "percent", "amount",
+                  "ipc_extra_percent", "ipc_lag_months", "active", "notes"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["ipc_extra_percent"].required = False
+
+    def clean_ipc_extra_percent(self):
+        return self.cleaned_data.get("ipc_extra_percent") or 0
+
+
+class BulkPlanForm(SalaryPlanForm):
+    department = forms.ModelChoiceField(label="Aplicar a: área", queryset=Department.objects.all(), required=False)
+    union_agreement = forms.CharField(label="Aplicar a: convenio (CCT)", required=False)
+    only_without_plan = forms.BooleanField(label="Solo empleados sin esquema", required=False, initial=True)
+
+
+class IPCForm(BaseModelForm):
+    class Meta:
+        model = IPCValue
+        fields = ["month", "variation", "source"]
+        help_texts = {"variation": "Variación mensual publicada por el INDEC. Ej.: 2,7"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["month"].input_formats = ["%Y-%m", "%Y-%m-%d", "%m/%Y"]
+        widget = self.fields["month"].widget
+        widget.input_type = "month"
+        widget.format = "%Y-%m"

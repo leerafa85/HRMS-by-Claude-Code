@@ -16,6 +16,7 @@
       <a class="list-group-item list-group-item-action" href="{% url 'empleados:sede_list' %}"><i class="bi bi-geo-alt me-2"></i>Sucursales / sedes</a>
       <a class="list-group-item list-group-item-action" href="{% url 'licencias:tipo_list' %}"><i class="bi bi-calendar2-week me-2"></i>Tipos de licencia</a>
       <a class="list-group-item list-group-item-action" href="{% url 'licencias:feriado_list' %}"><i class="bi bi-flag me-2"></i>Feriados</a>
+      {% if user|can_view:"salarios" %}<a class="list-group-item list-group-item-action" href="{% url 'empleados:ipc_list' %}"><i class="bi bi-graph-up me-2"></i>IPC mensual (ajustes por inflación)</a>{% endif %}
       <a class="list-group-item list-group-item-action" href="{% url 'onboarding:plantilla_list' %}"><i class="bi bi-list-check me-2"></i>Plantillas de onboarding/offboarding</a>
       {% if user|can_view:"usuarios" %}
       <a class="list-group-item list-group-item-action" href="{% url 'core:usuario_list' %}"><i class="bi bi-person-gear me-2"></i>Usuarios</a>
