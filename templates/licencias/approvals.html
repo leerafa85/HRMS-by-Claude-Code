@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Aprobaciones{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-3">Solicitudes pendientes de aprobación</h1>
+<div class="card"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+<thead><tr><th>Empleado</th><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Comprobante</th><th>Solicitada</th><th></th></tr></thead><tbody>
+{% for r in requests %}<tr>
+  <td><a href="{% url 'licencias:solicitud_detail' r.pk %}">{{ r.employee.full_name }}</a></td>
+  <td><span class="leave-dot me-1" style="background:{{ r.leave_type.color }}"></span>{{ r.leave_type }}</td>
+  <td>{{ r.start_date|date:"d/m/Y" }}</td><td>{{ r.end_date|date:"d/m/Y" }}</td><td>{{ r.days|num:1 }}</td>
+  <td>{% if r.attachment %}<a href="{{ r.attachment.url }}" target="_blank"><i class="bi bi-paperclip"></i></a>{% elif r.leave_type.requires_attachment %}<span class="text-danger small">Falta</span>{% else %}—{% endif %}</td>
+  <td class="small">{{ r.created_at|date:"d/m/Y" }}</td>
+  <td class="text-end text-nowrap"><form method="post" action="{% url 'licencias:solicitud_review' r.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+    <button class="btn btn-sm btn-success" name="accion" value="aprobar" title="Aprobar"><i class="bi bi-check-lg"></i></button>
+    <button class="btn btn-sm btn-outline-danger" name="accion" value="rechazar" title="Rechazar"><i class="bi bi-x-lg"></i></button></form>
+    <a href="{% url 'licencias:solicitud_detail' r.pk %}" class="btn btn-sm btn-link">Detalle</a></td>
+</tr>{% empty %}<tr><td colspan="8" class="text-center text-muted py-4">No hay solicitudes pendientes. 🎉</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

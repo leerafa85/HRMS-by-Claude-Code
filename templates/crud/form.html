@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load hrms %}
+{% block content %}
+<div class="card" style="max-width: 980px"><div class="card-body">
+  <h1 class="h5 mb-3">{{ title }}</h1>
+  <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+    {% include "partials/form_errors.html" %}
+    {% block form_body %}
+    <div class="row">{% for f in form.visible_fields %}{% if f|widget_type == "textarea" or f|widget_type == "checkboxselectmultiple" %}{% field f "col-12" %}{% else %}{% field f %}{% endif %}{% endfor %}</div>
+    {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+    {% endblock %}
+    <div class="d-flex gap-2 mt-2">
+      <button class="btn btn-primary">{{ submit_label|default:"Guardar" }}</button>
+      {% block extra_buttons %}{% endblock %}
+      {% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-link">Cancelar</a>{% endif %}
+      {% if delete_inline %}<button name="eliminar" value="1" class="btn btn-outline-danger ms-auto" formnovalidate data-confirm="¿Eliminar este registro?">Eliminar</button>{% endif %}
+    </div>
+  </form>
+</div></div>
+{% endblock %}

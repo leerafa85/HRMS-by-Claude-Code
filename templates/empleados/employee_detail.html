@@ -1,0 +1,159 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}{{ employee.full_name }}{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body d-flex flex-wrap align-items-center gap-3">
+  {% include "partials/avatar.html" with e=employee size="avatar-lg" %}
+  <div class="me-auto">
+    <h1 class="h4 mb-0">{{ employee.full_name }}</h1>
+    <div class="text-muted">{{ employee.position|default:"Sin puesto" }}{% if employee.department %} · {{ employee.department }}{% endif %}{% if employee.location %} · {{ employee.location }}{% endif %}</div>
+    <div class="small mt-1">Legajo <strong>{{ employee.file_number }}</strong> · Ingreso {{ employee.hire_date|date:"d/m/Y" }} · Antigüedad {{ employee.seniority_display }}
+      · <span class="badge text-bg-{% if employee.status == 'activo' %}success{% elif employee.status == 'baja' %}secondary{% else %}warning{% endif %}">{{ employee.get_status_display }}</span></div>
+  </div>
+  {% if not self_view %}
+  <div class="d-flex flex-wrap gap-2 no-print">
+    {% if perm.edit %}<a href="{% url 'empleados:empleado_update' employee.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-pencil me-1"></i>Editar</a>{% endif %}
+    {% if perm.leave and user|can_edit:"licencias" %}<a href="{% url 'licencias:solicitud_create' %}?empleado={{ employee.pk }}" class="btn btn-sm btn-outline-primary">Cargar licencia</a>{% endif %}
+    {% if user|can_edit:"asistencia" %}<div class="dropdown"><button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">Asistencia</button><ul class="dropdown-menu">
+      <li><a class="dropdown-item" href="{% url 'asistencia:inasistencia_create' %}?empleado={{ employee.pk }}">Registrar inasistencia</a></li>
+      <li><a class="dropdown-item" href="{% url 'asistencia:tardanza_create' %}?empleado={{ employee.pk }}">Registrar llegada tarde</a></li>
+      <li><a class="dropdown-item" href="{% url 'asistencia:horaextra_create' %}?empleado={{ employee.pk }}">Registrar horas extras</a></li></ul></div>{% endif %}
+    {% if perm.admin %}
+      {% if employee.status == 'baja' %}<form method="post" action="{% url 'empleados:empleado_reactivar' employee.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success" data-confirm="¿Reactivar este legajo?">Reactivar</button></form>
+      {% else %}<a href="{% url 'empleados:empleado_baja' employee.pk %}" class="btn btn-sm btn-outline-danger">Dar de baja</a>{% endif %}
+    {% endif %}
+    <button onclick="window.print()" class="btn btn-sm btn-outline-secondary" title="Imprimir"><i class="bi bi-printer"></i></button>
+  </div>
+  {% endif %}
+</div></div>
+
+<ul class="nav nav-tabs mb-3 no-print" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#datos">Datos</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#familia">Familia y contactos</button></li>
+  {% if perm.documents %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#documentos">Documentos <span class="badge text-bg-secondary">{{ documents|length }}</span></button></li>{% endif %}
+  {% if perm.salary %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#salario">Salario</button></li>{% endif %}
+  {% if perm.leave %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#licencias">Vacaciones y licencias</button></li>{% endif %}
+  {% if perm.attendance %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#asistencia">Asistencia</button></li>{% endif %}
+  {% if perm.onboarding %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#onboarding">Onboarding</button></li>{% endif %}
+</ul>
+
+<div class="tab-content">
+<div class="tab-pane fade show active" id="datos">
+  <div class="row g-3">
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Datos personales</div><div class="card-body"><dl class="row dl-grid mb-0">
+      <div class="col-6"><dt>DNI</dt><dd>{{ employee.dni }}</dd></div>
+      <div class="col-6"><dt>CUIL</dt><dd>{{ employee.cuil }}</dd></div>
+      {% if perm.sensitive %}
+      <div class="col-6"><dt>Nacimiento</dt><dd>{{ employee.birth_date|date:"d/m/Y"|default:"—" }}{% if employee.age %} ({{ employee.age }} años){% endif %}</dd></div>
+      <div class="col-6"><dt>Género</dt><dd>{{ employee.get_gender_display|default:"—" }}</dd></div>
+      <div class="col-6"><dt>Estado civil</dt><dd>{{ employee.get_marital_status_display|default:"—" }}</dd></div>
+      <div class="col-6"><dt>Nacionalidad</dt><dd>{{ employee.nationality|default:"—" }}</dd></div>
+      <div class="col-12"><dt>Domicilio</dt><dd>{{ employee.address|default:"—" }}{% if employee.city %}, {{ employee.city }}{% endif %}{% if employee.province %}, {{ employee.get_province_display }}{% endif %}{% if employee.postal_code %} ({{ employee.postal_code }}){% endif %}</dd></div>
+      <div class="col-6"><dt>Email personal</dt><dd>{{ employee.personal_email|default:"—" }}</dd></div>
+      <div class="col-6"><dt>Celular</dt><dd>{{ employee.mobile|default:"—" }}</dd></div>
+      {% endif %}
+      <div class="col-6"><dt>Email laboral</dt><dd>{{ employee.work_email|default:"—" }}</dd></div>
+      <div class="col-6"><dt>Teléfono</dt><dd>{{ employee.phone|default:"—" }}</dd></div>
+    </dl></div></div></div>
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Datos laborales</div><div class="card-body"><dl class="row dl-grid mb-0">
+      <div class="col-6"><dt>Fecha de ingreso</dt><dd>{{ employee.hire_date|date:"d/m/Y" }}</dd></div>
+      <div class="col-6"><dt>Antigüedad reconocida desde</dt><dd>{{ employee.seniority_start|date:"d/m/Y" }}</dd></div>
+      <div class="col-6"><dt>Modalidad</dt><dd>{{ employee.get_contract_type_display }}{% if employee.contract_end_date %} hasta {{ employee.contract_end_date|date:"d/m/Y" }}{% endif %}</dd></div>
+      <div class="col-6"><dt>Fin período de prueba</dt><dd>{{ employee.trial_end_date|date:"d/m/Y"|default:"—" }}</dd></div>
+      <div class="col-6"><dt>Jefe directo</dt><dd>{% if employee.manager %}{{ employee.manager.full_name }}{% else %}—{% endif %}</dd></div>
+      <div class="col-6"><dt>Jornada</dt><dd>{{ employee.weekly_hours|num:0 }} h semanales{% if employee.start_time %} · {{ employee.start_time|time:"H:i" }}{% if employee.end_time %}–{{ employee.end_time|time:"H:i" }}{% endif %}{% endif %}{% if employee.works_saturday %} · trabaja sábados{% endif %}</dd></div>
+      <div class="col-6"><dt>Pago</dt><dd>{{ employee.get_pay_type_display }}</dd></div>
+      <div class="col-6"><dt>Convenio / categoría</dt><dd>{{ employee.union_agreement|default:"Fuera de convenio" }}{% if employee.category %} · {{ employee.category }}{% endif %}</dd></div>
+      <div class="col-6"><dt>Sindicato</dt><dd>{{ employee.union|default:"—" }}</dd></div>
+      <div class="col-6"><dt>Obra social</dt><dd>{{ employee.health_insurance|default:"—" }}{% if employee.health_plan %} · {{ employee.health_plan }}{% endif %}</dd></div>
+      {% if perm.sensitive %}<div class="col-12"><dt>Cuenta sueldo</dt><dd>{{ employee.bank|default:"—" }}{% if employee.cbu %} · CBU {{ employee.cbu }}{% endif %}{% if employee.bank_alias %} · Alias {{ employee.bank_alias }}{% endif %}</dd></div>{% endif %}
+      {% if employee.user %}<div class="col-12"><dt>Usuario del sistema</dt><dd>{{ employee.user.username }}</dd></div>{% endif %}
+      {% if employee.termination_date %}<div class="col-12"><dt>Egreso</dt><dd class="text-danger">{{ employee.termination_date|date:"d/m/Y" }} · {{ employee.get_termination_reason_display }}{% if employee.termination_notes %}<br><span class="small">{{ employee.termination_notes }}</span>{% endif %}</dd></div>{% endif %}
+    </dl></div></div></div>
+    {% if employee.notes and perm.edit %}<div class="col-12"><div class="card"><div class="card-header">Observaciones</div><div class="card-body">{{ employee.notes|linebreaks }}</div></div></div>{% endif %}
+    {% if employee.reports.exists %}<div class="col-12"><div class="card"><div class="card-header">Equipo a cargo</div><div class="card-body d-flex flex-wrap gap-2">{% for r in employee.reports.all %}{% if r.status != 'baja' %}<span class="badge text-bg-light">{{ r.full_name }}</span>{% endif %}{% endfor %}</div></div></div>{% endif %}
+  </div>
+</div>
+
+<div class="tab-pane fade" id="familia">
+  <div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-header d-flex">Grupo familiar{% if perm.edit and not self_view %}<a href="{% url 'empleados:familiar_create' employee.pk %}" class="ms-auto btn btn-sm btn-outline-primary">Agregar</a>{% endif %}</div>
+    <table class="table table-sm mb-0"><thead><tr><th>Nombre</th><th>Vínculo</th><th>DNI</th><th>Nacimiento</th><th>A cargo</th><th></th></tr></thead><tbody>
+    {% for f in employee.family_members.all %}<tr><td>{{ f.name }}</td><td>{{ f.get_relationship_display }}</td><td>{{ f.dni|default:"—" }}</td><td>{{ f.birth_date|date:"d/m/Y"|default:"—" }}</td><td>{{ f.dependent|yesno:"Sí,No" }}{% if f.disability %} · CUD{% endif %}</td><td>{% if perm.edit and not self_view %}<a href="{% url 'empleados:familiar_update' employee.pk f.pk %}"><i class="bi bi-pencil"></i></a>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="text-muted small">Sin familiares cargados.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-header d-flex">Contactos de emergencia{% if perm.edit and not self_view %}<a href="{% url 'empleados:contacto_create' employee.pk %}" class="ms-auto btn btn-sm btn-outline-primary">Agregar</a>{% endif %}</div>
+    <ul class="list-group list-group-flush">{% for c in employee.emergency_contacts.all %}<li class="list-group-item small d-flex"><span class="me-auto"><strong>{{ c.name }}</strong> ({{ c.relationship }})<br>{{ c.phone }}</span>{% if perm.edit and not self_view %}<a href="{% url 'empleados:contacto_update' employee.pk c.pk %}"><i class="bi bi-pencil"></i></a>{% endif %}</li>{% empty %}<li class="list-group-item small text-muted">Sin contactos cargados.</li>{% endfor %}</ul>
+  </div></div>
+  </div>
+</div>
+
+{% if perm.documents %}
+<div class="tab-pane fade" id="documentos">
+  {% if upload_form and not self_view %}
+  <div class="card mb-3"><div class="card-body">
+    <form method="post" action="{% url 'empleados:documento_multi' employee.pk %}" enctype="multipart/form-data" class="row g-2 align-items-end">{% csrf_token %}
+      <div class="col-md-4"><label class="form-label">Archivos (PDF, imágenes, Word, Excel)</label>{{ upload_form.files }}</div>
+      <div class="col-md-3"><label class="form-label">Categoría</label>{{ upload_form.category }}</div>
+      <div class="col-md-2"><label class="form-label">Vencimiento</label>{{ upload_form.expiry_date }}</div>
+      <div class="col-md-2"><div class="form-check">{{ upload_form.visible_to_employee }}<label class="form-check-label small" for="{{ upload_form.visible_to_employee.id_for_label }}">Visible para el empleado</label></div></div>
+      <div class="col-md-1"><button class="btn btn-primary w-100"><i class="bi bi-upload"></i></button></div>
+    </form>
+    <div class="small text-muted mt-1">Podés seleccionar varios archivos a la vez. Para cargar título y fecha específicos usá <a href="{% url 'empleados:documento_create' %}?empleado={{ employee.pk }}">carga detallada</a>.</div>
+  </div></div>
+  {% endif %}
+  <div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th></th><th>Documento</th><th>Categoría</th><th>Fecha</th><th>Vencimiento</th><th>Cargado</th><th></th></tr></thead><tbody>
+    {% for d in documents %}<tr>
+      <td>{% if d.is_image %}<a href="{{ d.file.url }}" target="_blank"><img src="{{ d.file.url }}" style="height:36px;width:36px;object-fit:cover" class="rounded"></a>{% else %}<i class="bi bi-file-earmark-text fs-4 text-secondary"></i>{% endif %}</td>
+      <td><a href="{{ d.file.url }}" target="_blank">{{ d.title }}</a>{% if not d.visible_to_employee %} <i class="bi bi-eye-slash text-muted" title="No visible para el empleado"></i>{% endif %}{% if d.notes %}<div class="small text-muted">{{ d.notes }}</div>{% endif %}</td>
+      <td>{{ d.get_category_display }}</td><td>{{ d.issue_date|date:"d/m/Y"|default:"—" }}</td>
+      <td>{% if d.expiry_date %}<span class="{% if d.is_expired %}text-danger fw-semibold{% endif %}">{{ d.expiry_date|date:"d/m/Y" }}</span>{% else %}—{% endif %}</td>
+      <td class="small">{{ d.created_at|date:"d/m/Y" }}<br><span class="text-muted">{{ d.created_by|default:"" }}</span></td>
+      <td class="text-nowrap"><a href="{{ d.file.url }}?descargar=1" title="Descargar"><i class="bi bi-download"></i></a>
+        {% if perm.documents_edit and not self_view %}<a href="{% url 'empleados:documento_update' d.pk %}" class="ms-2"><i class="bi bi-pencil"></i></a>{% endif %}
+        {% if user|can_admin:"documentos" and not self_view %}<a href="{% url 'empleados:documento_delete' d.pk %}" class="ms-2 text-danger"><i class="bi bi-trash"></i></a>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="7" class="text-muted small text-center py-3">No hay documentos.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+</div>
+{% endif %}
+
+{% if perm.salary %}
+<div class="tab-pane fade" id="salario">
+  <div class="card"><div class="card-header d-flex align-items-center">Historial salarial · Vigente: <strong class="ms-1">{{ employee.current_salary|ars }}</strong>
+    {% if perm.salary_edit and not self_view %}<a href="{% url 'empleados:salario_create' %}?empleado={{ employee.pk }}" class="ms-auto btn btn-sm btn-outline-primary">Nuevo ajuste</a>{% endif %}</div>
+  <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Vigencia</th><th>Anterior</th><th>Nuevo</th><th>Variación</th><th>Motivo</th><th>Respaldo</th><th>Observaciones</th></tr></thead><tbody>
+  {% for s in salaries %}<tr><td>{{ s.effective_date|date:"d/m/Y" }}</td><td>{{ s.previous_salary|ars }}</td><td class="fw-semibold">{{ s.new_salary|ars }}</td><td>{% if s.variation_pct is not None %}{{ s.variation_pct|num:2 }} %{% else %}—{% endif %}</td><td>{{ s.get_reason_display }}</td><td>{% if s.attachment %}<a href="{{ s.attachment.url }}" target="_blank"><i class="bi bi-paperclip"></i></a>{% endif %}</td><td class="small">{{ s.notes }}</td></tr>{% empty %}<tr><td colspan="7" class="text-muted small">Sin registros salariales.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+</div>
+{% endif %}
+
+{% if perm.leave %}
+<div class="tab-pane fade" id="licencias">
+  <div class="row g-3">
+    <div class="col-lg-5"><div class="card"><div class="card-header">Saldos</div><table class="table table-sm mb-0"><thead><tr><th>Tipo</th><th>Período</th><th>Total</th><th>Gozados</th><th>Disponibles</th></tr></thead><tbody>
+      {% for b in balances %}<tr><td>{{ b.leave_type }}</td><td>{{ b.year }}</td><td>{{ b.total|num:1 }}</td><td>{{ b.used|num:1 }}</td><td class="fw-semibold">{{ b.available|num:1 }}</td></tr>{% empty %}<tr><td colspan="5" class="small text-muted">Sin saldos generados.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+    <div class="col-lg-7"><div class="card"><div class="card-header">Solicitudes</div><table class="table table-sm mb-0"><thead><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th></tr></thead><tbody>
+      {% for r in leave_requests %}<tr><td><a href="{% url 'licencias:solicitud_detail' r.pk %}"><span class="leave-dot me-1" style="background:{{ r.leave_type.color }}"></span>{{ r.leave_type }}</a></td><td>{{ r.start_date|date:"d/m/Y" }}</td><td>{{ r.end_date|date:"d/m/Y" }}</td><td>{{ r.days|num:1 }}</td><td>{{ r.get_status_display }}</td></tr>{% empty %}<tr><td colspan="5" class="small text-muted">Sin solicitudes.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+  </div>
+</div>
+{% endif %}
+
+{% if perm.attendance %}
+<div class="tab-pane fade" id="asistencia">
+  <div class="row g-3">
+    <div class="col-lg-4"><div class="card"><div class="card-header">Inasistencias {% now "Y" %} ({{ absences|length }})</div><ul class="list-group list-group-flush small">{% for a in absences %}<li class="list-group-item">{{ a.date|date:"d/m/Y" }} · {{ a.get_reason_display }} {% if a.justified %}<span class="badge text-bg-success">Justificada</span>{% else %}<span class="badge text-bg-danger">Injustificada</span>{% endif %}</li>{% empty %}<li class="list-group-item text-muted">Sin inasistencias.</li>{% endfor %}</ul></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-header">Llegadas tarde {% now "Y" %} ({{ tardies|length }})</div><ul class="list-group list-group-flush small">{% for t in tardies %}<li class="list-group-item">{{ t.date|date:"d/m/Y" }} · {{ t.arrival_time|time:"H:i" }} ({{ t.minutes_late }} min){% if t.justified %} <span class="badge text-bg-success">Just.</span>{% endif %}</li>{% empty %}<li class="list-group-item text-muted">Sin llegadas tarde.</li>{% endfor %}</ul></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-header">Horas extras {% now "Y" %}</div><ul class="list-group list-group-flush small">{% for o in overtimes %}<li class="list-group-item">{{ o.date|date:"d/m/Y" }} · {{ o.hours|num:2 }} h al {{ o.rate }} % · {{ o.get_status_display }}</li>{% empty %}<li class="list-group-item text-muted">Sin horas extras.</li>{% endfor %}</ul></div></div>
+  </div>
+</div>
+{% endif %}
+
+{% if perm.onboarding %}
+<div class="tab-pane fade" id="onboarding">
+  <div class="mb-2">{% if user|can_edit:"onboarding" %}<a href="{% url 'onboarding:checklist_create' %}?empleado={{ employee.pk }}" class="btn btn-sm btn-outline-primary">Iniciar checklist</a>{% endif %}</div>
+  {% for cl in checklists %}<div class="card mb-2"><div class="card-body py-2 d-flex align-items-center"><a href="{% url 'onboarding:checklist_detail' cl.pk %}" class="me-auto">{{ cl.name }} ({{ cl.get_kind_display }})</a><div class="progress" style="width:160px;height:8px"><div class="progress-bar" style="width:{{ cl.progress }}%"></div></div><span class="small ms-2">{{ cl.progress }} %</span></div></div>{% empty %}<p class="text-muted small">Sin checklists.</p>{% endfor %}
+</div>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% load static hrms %}<!doctype html>
+<html lang="es-AR" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ title|default:"HRMS" }}{% endblock %} · {{ company }}</title>
+  <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
+  <link href="{% static 'css/hrms.css' %}" rel="stylesheet">
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% block body %}
+<div class="d-flex">
+  <nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0 p-3 offcanvas-lg offcanvas-start" tabindex="-1">
+    <a href="{% url 'dashboard' %}" class="d-flex align-items-center mb-3 text-decoration-none brand">
+      {% if company.logo %}<img src="{{ company.logo.url }}" alt="" class="me-2" style="height:32px">{% else %}<i class="bi bi-people-fill fs-4 me-2"></i>{% endif %}
+      <span class="fs-5 fw-semibold text-truncate">{{ company }}</span>
+    </a>
+    <ul class="nav nav-pills flex-column mb-auto small">
+      <li class="nav-item"><a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="bi bi-house me-2"></i>Inicio</a></li>
+      {% if my_employee %}
+      <li class="nav-section">Autogestión</li>
+      <li><a href="{% url 'empleados:mi_legajo' %}" class="nav-link"><i class="bi bi-person-vcard me-2"></i>Mi legajo</a></li>
+      <li><a href="{% url 'licencias:mis_licencias' %}" class="nav-link"><i class="bi bi-airplane me-2"></i>Mis vacaciones y licencias</a></li>
+      <li><a href="{% url 'asistencia:mi_asistencia' %}" class="nav-link"><i class="bi bi-clock me-2"></i>Mi asistencia</a></li>
+      {% endif %}
+      <li><a href="{% url 'onboarding:mis_tareas' %}" class="nav-link"><i class="bi bi-check2-square me-2"></i>Mis tareas</a></li>
+      {% if has_team or can_approve %}
+      <li class="nav-section">Gestión</li>
+      {% if has_team %}<li><a href="{% url 'empleados:mi_equipo' %}" class="nav-link"><i class="bi bi-diagram-2 me-2"></i>Mi equipo</a></li>{% endif %}
+      <li><a href="{% url 'licencias:aprobaciones' %}" class="nav-link d-flex align-items-center"><i class="bi bi-inbox me-2"></i>Aprobaciones{% if pending_approvals %}<span class="badge text-bg-danger ms-auto">{{ pending_approvals }}</span>{% endif %}</a></li>
+      {% endif %}
+      {% for section in menu %}
+      <li class="nav-section">{{ section.title }}</li>
+      {% for item in section.items %}
+      <li><a href="{{ item.url }}" class="nav-link {% if request.path == item.url %}active{% endif %}"><i class="bi bi-{{ item.icon }} me-2"></i>{{ item.label }}</a></li>
+      {% endfor %}
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <div class="flex-grow-1 main-wrap">
+    <header class="topbar d-flex align-items-center px-3 py-2 border-bottom bg-body">
+      <button class="btn btn-sm btn-outline-secondary d-lg-none me-2" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-label="Menú"><i class="bi bi-list"></i></button>
+      <div class="me-auto text-muted small d-none d-md-block">{% now "l j \d\e F \d\e Y" %}</div>
+      <button class="btn btn-sm btn-link text-body" id="themeToggle" title="Modo claro/oscuro"><i class="bi bi-moon-stars"></i></button>
+      <div class="dropdown">
+        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-body" data-bs-toggle="dropdown">
+          {% if my_employee.photo %}<img src="{{ my_employee.photo.url }}" class="avatar avatar-sm me-2" alt="">{% else %}<span class="avatar avatar-sm avatar-initials me-2">{{ user.first_name|slice:":1"|default:user.username|slice:":1"|upper }}</span>{% endif %}
+          <span class="small">{{ user }}</span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+          <li><a class="dropdown-item" href="{% url 'core:perfil' %}"><i class="bi bi-person me-2"></i>Mi cuenta</a></li>
+          <li><a class="dropdown-item" href="{% url 'password_change' %}"><i class="bi bi-key me-2"></i>Cambiar contraseña</a></li>
+          {% if user.is_superuser %}<li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="bi bi-tools me-2"></i>Admin técnico</a></li>{% endif %}
+          <li><hr class="dropdown-divider"></li>
+          <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button></form></li>
+        </ul>
+      </div>
+    </header>
+    <main class="p-3 p-md-4">
+      {% include "partials/messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/hrms.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

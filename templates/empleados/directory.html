@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Directorio{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3"><h1 class="h4 page-title me-auto">Directorio de personas</h1>
+<form class="d-flex gap-2"><input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Nombre, área, puesto…">
+<select name="area" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Todas las áreas</option>{% for d in departments %}<option value="{{ d.pk }}" {% if area == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
+<button class="btn btn-sm btn-secondary"><i class="bi bi-search"></i></button></form></div>
+<div class="row g-3">
+{% for e in employees %}
+<div class="col-sm-6 col-lg-4 col-xl-3"><div class="card h-100"><div class="card-body text-center">
+  {% include "partials/avatar.html" with e=e size="avatar-lg" %}
+  <h2 class="h6 mt-2 mb-0">{% if user|can_view:"empleados" %}<a href="{% url 'empleados:empleado_detail' e.pk %}">{{ e.full_name }}</a>{% else %}{{ e.full_name }}{% endif %}</h2>
+  <div class="small text-muted">{{ e.position|default:"" }}</div>
+  <div class="small">{{ e.department|default:"" }}{% if e.location %} · {{ e.location }}{% endif %}</div>
+  {% if e.work_email %}<div class="small mt-2"><a href="mailto:{{ e.work_email }}"><i class="bi bi-envelope"></i> {{ e.work_email }}</a></div>{% endif %}
+  {% if e.phone %}<div class="small"><i class="bi bi-telephone"></i> {{ e.phone }}</div>{% endif %}
+  <a href="{% url 'empleados:vcard' e.pk %}" class="small text-muted">Descargar contacto</a>
+</div></div></div>
+{% empty %}<p class="text-muted">No se encontraron personas.</p>{% endfor %}
+</div>
+{% endblock %}

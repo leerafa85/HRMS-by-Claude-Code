@@ -1,0 +1,5 @@
+{% extends "crud/list.html" %}
+{% block toolbar_extra %}
+<a href="{% url 'empleados:directorio' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-grid-3x3-gap me-1"></i>Directorio</a>
+<a href="{% url 'empleados:organigrama' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-diagram-3 me-1"></i>Organigrama</a>
+{% endblock %}

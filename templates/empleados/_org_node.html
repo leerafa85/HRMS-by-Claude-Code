@@ -1,0 +1,2 @@
+<li><span class="org-node">{% include "partials/avatar.html" with e=node.employee size="avatar-sm" %}<span><strong class="small">{{ node.employee.full_name }}</strong><br><span class="small text-muted">{{ node.employee.position|default:"" }}{% if node.employee.department %} · {{ node.employee.department }}{% endif %}</span></span></span>
+{% if node.children %}<ul>{% for node in node.children %}{% include "empleados/_org_node.html" %}{% endfor %}</ul>{% endif %}</li>

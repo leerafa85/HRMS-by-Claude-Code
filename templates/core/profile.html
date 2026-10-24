@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Mi cuenta{% endblock %}
+{% block content %}
+<div class="card" style="max-width:640px"><div class="card-body">
+  <h1 class="h5 mb-3">Mi cuenta</h1>
+  <p class="small text-muted">Usuario: <strong>{{ user.username }}</strong> · Roles: {% if user.is_superuser %}Administrador total{% else %}{{ user.roles.all|join:", "|default:"—" }}{% endif %}</p>
+  <form method="post">{% csrf_token %}{% include "partials/form_errors.html" %}
+    <div class="row">{% for f in form %}{% field f %}{% endfor %}</div>
+    <button class="btn btn-primary">Guardar</button>
+    <a href="{% url 'password_change' %}" class="btn btn-outline-secondary">Cambiar contraseña</a>
+  </form>
+</div></div>
+{% endblock %}

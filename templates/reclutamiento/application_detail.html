@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Postulación{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 page-title me-auto"><a href="{% url 'reclutamiento:candidato_detail' app.candidate_id %}">{{ app.candidate.full_name }}</a> → <a href="{% url 'reclutamiento:busqueda_detail' app.job_id %}">{{ app.job }}</a></h1>
+  {% if can_edit %}
+  <a href="{% url 'reclutamiento:postulacion_update' app.pk %}" class="btn btn-sm btn-outline-primary">Editar / oferta</a>
+  {% if app.hired_employee %}<a href="{% url 'empleados:empleado_detail' app.hired_employee_id %}" class="btn btn-sm btn-success">Ver legajo</a>
+  {% else %}<a href="{% url 'reclutamiento:postulacion_hire' app.pk %}" class="btn btn-sm btn-success"><i class="bi bi-person-check me-1"></i>Contratar</a>{% endif %}
+  {% endif %}
+</div>
+<div class="row g-3">
+<div class="col-lg-4"><div class="card"><div class="card-body small">
+  <dl class="dl-grid mb-0"><dt>Etapa</dt><dd>{% if can_edit %}<form method="post" action="{% url 'reclutamiento:postulacion_move' app.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><select name="stage" class="form-select form-select-sm" onchange="this.form.submit()">{% for v, l in stages %}<option value="{{ v }}" {% if v == app.stage %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></form>{% else %}{{ app.get_stage_display }}{% endif %}</dd>
+  <dt>Valoración</dt><dd>{{ app.rating|default:"—" }}</dd>
+  <dt>Postulación</dt><dd>{{ app.created_at|date:"d/m/Y" }}</dd>
+  <dt>Salario ofrecido</dt><dd>{{ app.offer_salary|ars }}</dd>
+  <dt>Ingreso propuesto</dt><dd>{{ app.offer_start_date|date:"d/m/Y"|default:"—" }}</dd>
+  {% if app.discard_reason %}<dt>Motivo de descarte</dt><dd>{{ app.discard_reason }}</dd>{% endif %}
+  {% if app.notes %}<dt>Notas</dt><dd>{{ app.notes|linebreaksbr }}</dd>{% endif %}
+  <dt>CV</dt><dd>{% if app.candidate.resume %}<a href="{{ app.candidate.resume.url }}" target="_blank">Ver CV</a>{% else %}—{% endif %}</dd></dl>
+</div></div></div>
+<div class="col-lg-8"><div class="card"><div class="card-header d-flex">Entrevistas{% if can_edit %}<a href="{% url 'reclutamiento:entrevista_create' app.pk %}" class="ms-auto btn btn-sm btn-outline-primary">Agendar entrevista</a>{% endif %}</div>
+<ul class="list-group list-group-flush">{% for i in interviews %}<li class="list-group-item small">
+  <div class="d-flex"><strong class="me-auto">{{ i.scheduled_at|date:"l d/m/Y H:i" }} · {{ i.get_mode_display }}</strong><span class="badge text-bg-light">{{ i.get_result_display }}</span>{% if can_edit %}<a href="{% url 'reclutamiento:entrevista_update' app.pk i.pk %}" class="ms-2"><i class="bi bi-pencil"></i></a>{% endif %}</div>
+  <div class="text-muted">{{ i.interviewer|default:"Sin entrevistador" }}{% if i.location_or_link %} · {{ i.location_or_link|urlize }}{% endif %}{% if i.score %} · Puntaje {{ i.score }}/5{% endif %}</div>
+  {% if i.feedback %}<div class="mt-1">{{ i.feedback|linebreaksbr }}</div>{% endif %}
+</li>{% empty %}<li class="list-group-item text-muted small">Sin entrevistas.</li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}

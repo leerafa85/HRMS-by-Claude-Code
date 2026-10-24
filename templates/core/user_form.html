@@ -1,0 +1,11 @@
+{% extends "crud/form.html" %}{% load hrms %}
+{% block form_body %}
+<div class="row">
+  {% field form.username %}{% field form.email %}{% field form.first_name %}{% field form.last_name %}
+  {% field form.password1 %}{% field form.password2 %}{% field form.employee %}
+  {% field form.is_active %}
+  {% if form.is_superuser %}{% field form.is_superuser %}{% endif %}
+  {% field form.roles "col-12" %}
+</div>
+<p class="small text-muted">Los permisos efectivos son la suma de los roles asignados (se toma el nivel más alto de cada módulo). <a href="{% url 'core:rol_matriz' %}" target="_blank">Ver matriz de permisos</a>.</p>
+{% endblock %}

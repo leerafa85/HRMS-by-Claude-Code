@@ -1,0 +1,10 @@
+{% load static %}<!doctype html>
+<html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Trabajá con nosotros{% endblock %} · {{ company }}</title>
+<link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+<link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
+<link href="{% static 'css/hrms.css' %}" rel="stylesheet"></head>
+<body class="bg-body-tertiary">
+<nav class="navbar bg-dark navbar-dark mb-4"><div class="container"><a class="navbar-brand" href="{% url 'empleos:lista' %}">{% if company.logo %}<img src="{{ company.logo.url }}" alt="" style="height:30px" class="me-2">{% endif %}{{ company }} · Empleos</a></div></nav>
+<div class="container pb-5" style="max-width:900px">{% block content %}{% endblock %}</div>
+</body></html>

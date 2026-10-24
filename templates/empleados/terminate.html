@@ -1,0 +1,5 @@
+{% extends "crud/form.html" %}{% load hrms %}
+{% block form_body %}
+<div class="alert alert-warning small">Se registrará el egreso de <strong>{{ employee.full_name }}</strong>. Sus colaboradores directos pasarán a reportar a su jefe. El legajo y su historial se conservan.</div>
+<div class="row">{% for f in form %}{% if f|widget_type == "textarea" %}{% field f "col-12" %}{% else %}{% field f %}{% endif %}{% endfor %}</div>
+{% endblock %}

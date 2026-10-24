@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}{{ object.full_name }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3"><h1 class="h4 page-title me-auto">{{ object.full_name }}</h1>
+{% if update_url %}<a href="{{ update_url }}" class="btn btn-sm btn-outline-primary">Editar</a>{% endif %}
+{% if delete_url %}<a href="{{ delete_url }}" class="btn btn-sm btn-outline-danger">Eliminar</a>{% endif %}</div>
+<div class="row g-3">
+<div class="col-lg-4"><div class="card"><div class="card-body small"><dl class="dl-grid mb-0">
+  <dt>Email</dt><dd><a href="mailto:{{ object.email }}">{{ object.email }}</a></dd>
+  <dt>Teléfono</dt><dd>{{ object.phone|default:"—" }}</dd>
+  <dt>DNI</dt><dd>{{ object.dni|default:"—" }}</dd>
+  <dt>Localidad</dt><dd>{{ object.city|default:"—" }}</dd>
+  <dt>LinkedIn</dt><dd>{% if object.linkedin %}<a href="{{ object.linkedin }}" target="_blank" rel="noopener">Perfil</a>{% else %}—{% endif %}</dd>
+  <dt>Fuente</dt><dd>{{ object.get_source_display }}{% if object.referred_by %} (referido por {{ object.referred_by.full_name }}){% endif %}</dd>
+  <dt>Pretensión</dt><dd>{{ object.expected_salary|ars }}</dd>
+  <dt>CV</dt><dd>{% if object.resume %}<a href="{{ object.resume.url }}" target="_blank"><i class="bi bi-file-earmark-person"></i> Ver CV</a>{% else %}—{% endif %}</dd>
+  <dt>Etiquetas</dt><dd>{{ object.tags|default:"—" }}</dd>
+  <dt>Consentimiento Ley 25.326</dt><dd>{{ object.consent|yesno:"Sí,No" }}</dd>
+  {% if object.notes %}<dt>Notas</dt><dd>{{ object.notes|linebreaksbr }}</dd>{% endif %}
+</dl></div></div></div>
+<div class="col-lg-8">
+  <div class="card mb-3"><div class="card-header">Postulaciones</div><ul class="list-group list-group-flush">
+  {% for a in applications %}<li class="list-group-item d-flex align-items-center"><a href="{% url 'reclutamiento:postulacion_detail' a.pk %}" class="me-auto">{{ a.job }}</a><span class="badge text-bg-primary">{{ a.get_stage_display }}</span></li>{% empty %}<li class="list-group-item text-muted small">Sin postulaciones.</li>{% endfor %}
+  </ul></div>
+  {% if can_edit and open_jobs %}<form method="post" action="{% url 'reclutamiento:postulacion_add' %}" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="candidate" value="{{ object.pk }}"><input type="hidden" name="next" value="{{ request.path }}">
+    <select name="job" class="form-select form-select-sm">{% for j in open_jobs %}<option value="{{ j.pk }}">{{ j.title }}</option>{% endfor %}</select><button class="btn btn-sm btn-outline-primary text-nowrap">Postular a búsqueda</button></form>{% endif %}
+</div></div>
+{% endblock %}

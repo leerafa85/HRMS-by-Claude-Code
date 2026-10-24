@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Solicitud{% endblock %}
+{% block content %}
+<div class="row g-3">
+<div class="col-lg-8"><div class="card"><div class="card-body">
+  <div class="d-flex align-items-start mb-2">
+    <h1 class="h5 me-auto"><span class="leave-dot me-2" style="background:{{ req.leave_type.color }}"></span>{{ req.leave_type }} · {{ req.employee.full_name }}</h1>
+    <span class="badge fs-6 text-bg-{% if req.status == 'aprobada' %}success{% elif req.status == 'pendiente' %}warning{% elif req.status == 'rechazada' %}danger{% else %}secondary{% endif %}">{{ req.get_status_display }}</span>
+  </div>
+  <dl class="row dl-grid">
+    <div class="col-md-3"><dt>Desde</dt><dd>{{ req.start_date|date:"l d/m/Y" }}</dd></div>
+    <div class="col-md-3"><dt>Hasta</dt><dd>{{ req.end_date|date:"l d/m/Y" }}</dd></div>
+    <div class="col-md-3"><dt>Días</dt><dd>{{ req.days|num:1 }} ({{ req.leave_type.get_day_count_display|lower }})</dd></div>
+    <div class="col-md-3"><dt>Período</dt><dd>{{ req.period }}</dd></div>
+    <div class="col-md-3"><dt>Con goce</dt><dd>{{ req.leave_type.paid|yesno:"Sí,No" }}</dd></div>
+    <div class="col-md-3"><dt>Solicitada</dt><dd>{{ req.created_at|date:"d/m/Y H:i" }}</dd></div>
+    <div class="col-md-6"><dt>Comprobante</dt><dd>{% if req.attachment %}<a href="{{ req.attachment.url }}" target="_blank"><i class="bi bi-paperclip"></i> Ver comprobante</a>{% else %}—{% endif %}</dd></div>
+    {% if req.reason %}<div class="col-12"><dt>Motivo</dt><dd>{{ req.reason|linebreaksbr }}</dd></div>{% endif %}
+    {% if req.reviewed_by %}<div class="col-12"><dt>Revisión</dt><dd>{{ req.reviewed_by }} · {{ req.reviewed_at|date:"d/m/Y H:i" }}{% if req.review_comment %}<br>{{ req.review_comment }}{% endif %}</dd></div>{% endif %}
+    {% if req.leave_type.legal_reference %}<div class="col-12"><dt>Referencia legal</dt><dd class="small">{{ req.leave_type.legal_reference }}</dd></div>{% endif %}
+  </dl>
+  {% for w in warnings %}<div class="alert alert-warning py-2 small mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ w }}</div>{% endfor %}
+  {% if can_review %}
+  <form method="post" action="{% url 'licencias:solicitud_review' req.pk %}" class="border-top pt-3">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <label class="form-label">Comentario (opcional)</label>{{ review_form.comment }}
+    <div class="mt-2 d-flex gap-2"><button class="btn btn-success" name="accion" value="aprobar"><i class="bi bi-check-lg me-1"></i>Aprobar</button>
+    <button class="btn btn-outline-danger" name="accion" value="rechazar"><i class="bi bi-x-lg me-1"></i>Rechazar</button></div>
+  </form>
+  {% endif %}
+  <div class="d-flex gap-2 mt-3">
+    {% if can_cancel %}<form method="post" action="{% url 'licencias:solicitud_cancel' req.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" data-confirm="¿Cancelar la solicitud?">Cancelar solicitud</button></form>{% endif %}
+    {% if can_edit %}<a href="{% url 'licencias:solicitud_update' req.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>{% endif %}
+  </div>
+</div></div></div>
+<div class="col-lg-4">
+  {% if balance %}<div class="card mb-3"><div class="card-header">Saldo {{ balance.leave_type }} {{ balance.year }}</div><div class="card-body small">
+    Total: <strong>{{ balance.total|num:1 }}</strong> · Gozados: {{ balance.used|num:1 }} · Disponibles: <strong>{{ balance.available|num:1 }}</strong>
+    {% if req.status == 'pendiente' %}<br>Si se aprueba quedarían: <strong>{{ remaining|num:1 }}</strong>{% endif %}
+  </div></div>{% endif %}
+  <div class="card"><div class="card-header">Ausentes del área en esas fechas</div><ul class="list-group list-group-flush small">
+    {% for o in overlapping_team %}<li class="list-group-item">{{ o.employee.full_name }} · {{ o.leave_type }} ({{ o.start_date|date:"d/m" }}–{{ o.end_date|date:"d/m" }})</li>{% empty %}<li class="list-group-item text-muted">Nadie más del área.</li>{% endfor %}
+  </ul></div>
+</div>
+</div>
+{% endblock %}

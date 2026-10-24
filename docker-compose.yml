@@ -1,0 +1,26 @@
+# Despliegue en un servidor propio / VPS:  docker compose up -d
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hrms
+      POSTGRES_USER: hrms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cambiar}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://hrms:${POSTGRES_PASSWORD:-cambiar}@db:5432/hrms
+    ports:
+      - "8000:8000"
+    volumes:
+      - media:/data/media
+    depends_on:
+      - db
+volumes:
+  pgdata:
+  media:

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ obj.title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:860px"><div class="card-body">
+<h1 class="h4">{{ obj.title }}</h1><div class="small text-muted mb-3">{{ obj.publish_at|date:"d/m/Y H:i" }} · {{ obj.created_by|default:"RRHH" }}</div>
+{{ obj.body|linebreaks }}
+<a href="{% url 'anuncios:anuncio_list' %}" class="btn btn-sm btn-link px-0">← Volver</a>
+</div></div>
+{% endblock %}

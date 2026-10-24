@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Calendario de ausencias{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 page-title me-auto">Calendario de ausencias · {{ first|date:"F Y"|capfirst }}</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="?anio={{ prev_m.year }}&mes={{ prev_m.month }}&area={{ area|default:'' }}"><i class="bi bi-chevron-left"></i></a>
+  <a class="btn btn-sm btn-outline-secondary" href="?">Hoy</a>
+  <a class="btn btn-sm btn-outline-secondary" href="?anio={{ next_m.year }}&mes={{ next_m.month }}&area={{ area|default:'' }}"><i class="bi bi-chevron-right"></i></a>
+  <form class="d-flex gap-2"><input type="hidden" name="anio" value="{{ first.year }}"><input type="hidden" name="mes" value="{{ first.month }}">
+    <select name="area" class="form-select form-select-sm" onchange="this.form.submit()"><option value="">Todas las áreas</option>{% for d in departments %}<option value="{{ d.pk }}" {% if area == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
+    <div class="form-check text-nowrap"><input class="form-check-input" type="checkbox" name="solo_ausentes" value="1" id="sa" onchange="this.form.submit()" {% if request.GET.solo_ausentes %}checked{% endif %}><label for="sa" class="form-check-label small">Solo con ausencias</label></div>
+  </form>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-bordered cal-table mb-0">
+<thead><tr><th class="text-start">Empleado</th>{% for d in days %}<th class="{% if d.holiday %}cal-holiday{% elif d.weekend %}cal-weekend{% endif %}" title="{{ d.holiday.name|default:'' }}">{{ d.date|date:"D"|slice:":2" }}<br>{{ d.date.day }}</th>{% endfor %}</tr></thead>
+<tbody>{% for row in rows %}<tr><td class="name">{{ row.employee.full_name }}</td>
+{% for c in row.cells %}{% if c.req %}<td class="cal-leave" style="background:{{ c.req.leave_type.color }};{% if c.req.status == 'pendiente' %}opacity:.5{% endif %}" title="{{ c.req.leave_type }} ({{ c.req.get_status_display }})"><a href="{% url 'licencias:solicitud_detail' c.req.pk %}" class="text-white text-decoration-none">●</a></td>{% else %}<td class="{% if c.holiday %}cal-holiday{% elif c.date.weekday >= 5 %}cal-weekend{% endif %}"></td>{% endif %}{% endfor %}
+</tr>{% empty %}<tr><td colspan="40" class="text-muted text-center py-3">Sin datos.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="mt-2 small d-flex flex-wrap gap-3">{% for t in types %}<span><span class="leave-dot" style="background:{{ t.color }}"></span> {{ t.name }}</span>{% endfor %}<span><span class="leave-dot" style="background:#f8d7da"></span> Feriado</span><span class="text-muted">Semitransparente = pendiente</span></div>
+{% endblock %}

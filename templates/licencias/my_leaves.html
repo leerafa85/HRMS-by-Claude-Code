@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Mis vacaciones y licencias{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-3">Mis vacaciones y licencias</h1>
+<div class="row g-3">
+<div class="col-lg-7">
+  <div class="card mb-3"><div class="card-header">Nueva solicitud</div><div class="card-body">
+    <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}{% include "partials/form_errors.html" %}
+      {% include "licencias/_request_fields.html" %}
+      <button class="btn btn-primary">Enviar solicitud</button>
+    </form>
+  </div></div>
+  <div class="card"><div class="card-header">Mis solicitudes</div><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th></tr></thead><tbody>
+    {% for r in requests %}<tr><td><a href="{% url 'licencias:solicitud_detail' r.pk %}"><span class="leave-dot me-1" style="background:{{ r.leave_type.color }}"></span>{{ r.leave_type }}</a></td><td>{{ r.start_date|date:"d/m/Y" }}</td><td>{{ r.end_date|date:"d/m/Y" }}</td><td>{{ r.days|num:1 }}</td><td>{{ r.get_status_display }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted small">Todavía no hiciste solicitudes.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+</div>
+<div class="col-lg-5">
+  <div class="card mb-3"><div class="card-header">Mis saldos</div><table class="table table-sm mb-0"><thead><tr><th>Tipo</th><th>Período</th><th>Disponibles</th><th>Pendientes</th></tr></thead><tbody>
+    {% for b in balances %}<tr><td>{{ b.leave_type }}</td><td>{{ b.year }}</td><td class="fw-semibold">{{ b.available|num:1 }}</td><td>{{ b.pending|num:1 }}</td></tr>{% empty %}<tr><td colspan="4" class="small text-muted">RRHH todavía no generó tus saldos.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <div class="card mb-3"><div class="card-header">Tipos de licencia disponibles</div><ul class="list-group list-group-flush small">
+    {% for t in types %}<li class="list-group-item"><span class="leave-dot me-1" style="background:{{ t.color }}"></span><strong>{{ t.name }}</strong>{% if t.days_per_event %} · hasta {{ t.days_per_event|num:0 }} días{% endif %}{% if t.requires_attachment %} · requiere comprobante{% endif %}{% if t.legal_reference %}<div class="text-muted">{{ t.legal_reference }}</div>{% endif %}</li>{% endfor %}
+  </ul></div>
+  <div class="card"><div class="card-header">Próximos feriados</div><ul class="list-group list-group-flush small">{% for h in holidays %}<li class="list-group-item d-flex"><span class="me-auto">{{ h.name }}</span>{{ h.date|date:"D d/m" }}</li>{% empty %}<li class="list-group-item text-muted">—</li>{% endfor %}</ul></div>
+</div></div>
+{% endblock %}

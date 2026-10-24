@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <h1 class="h4 page-title me-auto">{{ title }}</h1>
+  <form class="d-flex gap-2">
+    {% if data.year_filter %}<select name="anio" class="form-select form-select-sm" onchange="this.form.submit()">{% for y in years %}<option {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}</select>{% endif %}
+    {% if data.options.por %}<select name="por" class="form-select form-select-sm" onchange="this.form.submit()">{% for k, v in data.options.por.items %}<option value="{{ k }}" {% if request.GET.por == k %}selected{% endif %}>Por {{ v|lower }}</option>{% endfor %}</select>{% endif %}
+    <button class="btn btn-sm btn-outline-success text-nowrap" name="exportar" value="1"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+  </form>
+  <a href="{% url 'reportes:index' %}" class="btn btn-sm btn-link">Todos los reportes</a>
+</div>
+<p class="small text-muted">{{ desc }}{% if data.summary %}<br><strong>{{ data.summary }}</strong>{% endif %}</p>
+<div class="row g-3">
+  {% if data.chart %}<div class="col-lg-5"><div class="card"><div class="card-body"><canvas id="chart" height="260"></canvas></div></div></div>{% endif %}
+  <div class="{% if data.chart %}col-lg-7{% else %}col-12{% endif %}"><div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr>{% for h in data.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for r in rows %}<tr>{% for v in r %}<td>{% if v is None %}—{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ data.headers|length }}" class="text-muted text-center py-3">Sin datos.</td></tr>{% endfor %}</tbody>
+  </table></div></div></div>
+</div>
+{% if data.chart %}{{ data.chart|json_script:"chart-data" }}{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if data.chart %}
+<script src="{% static 'vendor/chartjs/chart.umd.js' %}"></script>
+<script>
+(function () {
+  const d = JSON.parse(document.getElementById("chart-data").textContent);
+  const palette = ["#2b6cb0", "#e07a5f", "#3d9970", "#f2b134", "#7b5ea7", "#56a3c9", "#c94f7c", "#8a8f98", "#5c946e", "#d1495b"];
+  const datasets = d.series
+    ? d.series.map((s, i) => ({ label: s.label, data: s.values, backgroundColor: palette[i % palette.length] }))
+    : [{ data: d.values, backgroundColor: palette }];
+  new Chart(document.getElementById("chart"), {
+    type: d.type, data: { labels: d.labels, datasets: datasets },
+    options: { responsive: true, plugins: { legend: { display: d.type === "doughnut" || (d.series && d.series.length > 1) } } }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

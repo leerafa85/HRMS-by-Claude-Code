@@ -1,0 +1,7 @@
+{% extends "reclutamiento/public_base.html" %}
+{% block content %}
+<h1 class="h3 mb-3">Búsquedas abiertas</h1>
+<form class="mb-3 d-flex gap-2"><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar puesto…"><button class="btn btn-primary">Buscar</button></form>
+{% for j in jobs %}<a href="{% url 'empleos:detalle' j.pk %}" class="card card-body mb-2 text-decoration-none text-body"><div class="d-flex"><div class="me-auto"><h2 class="h5 mb-1">{{ j.title }}</h2><div class="small text-muted">{{ j.department|default:"" }}{% if j.location %} · {{ j.location }}{% endif %} · {{ j.get_modality_display }} · {{ j.get_contract_type_display }}</div></div><i class="bi bi-chevron-right align-self-center"></i></div></a>
+{% empty %}<p class="text-muted">En este momento no hay búsquedas abiertas.</p>{% endfor %}
+{% endblock %}

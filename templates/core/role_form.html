@@ -1,0 +1,11 @@
+{% extends "crud/form.html" %}{% load hrms %}
+{% block form_body %}
+<div class="row">{% field form.name %}{% field form.description %}</div>
+<h2 class="h6 mt-2">Permisos por módulo</h2>
+<p class="small text-muted mb-2"><strong>Ver</strong>: consulta. <strong>Ver y editar</strong>: altas y modificaciones. <strong>Administrar</strong>: además eliminar y aprobar (licencias, horas extras, ajustes masivos).</p>
+<div class="table-responsive"><table class="table table-sm align-middle" style="max-width:720px">
+  <thead><tr><th>Módulo</th><th style="width:260px">Nivel de acceso</th></tr></thead>
+  <tbody>{% for f in form.permission_fields %}<tr><td>{{ f.label }}</td><td>{{ f }}</td></tr>{% endfor %}</tbody>
+</table></div>
+<p class="small text-muted">Independientemente del rol, todo usuario vinculado a un legajo puede ver su propio legajo, pedir licencias y ver su asistencia; y los jefes directos pueden aprobar las solicitudes de su equipo.</p>
+{% endblock %}

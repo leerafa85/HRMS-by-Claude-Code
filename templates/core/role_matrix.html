@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Matriz de permisos{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-3">Matriz de permisos por rol</h1>
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+<thead><tr><th>Módulo</th>{% for r in roles %}<th>{{ r.name }}</th>{% endfor %}</tr></thead>
+<tbody>{% for row in rows %}<tr><td>{{ row.module.label }}</td>{% for l in row.levels %}<td>{% if l == 0 %}<span class="text-muted">—</span>{% elif l == 1 %}<span class="badge text-bg-info">Ver</span>{% elif l == 2 %}<span class="badge text-bg-primary">Editar</span>{% else %}<span class="badge text-bg-danger">Administrar</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

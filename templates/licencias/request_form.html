@@ -1,0 +1,2 @@
+{% extends "crud/form.html" %}
+{% block extra_buttons %}{% if can_auto_approve %}<button class="btn btn-success" name="aprobar" value="1">Guardar y aprobar</button>{% endif %}{% endblock %}

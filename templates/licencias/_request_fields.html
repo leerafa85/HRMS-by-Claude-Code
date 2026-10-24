@@ -1,0 +1,5 @@
+{% load hrms %}<div class="row">
+{% if form.employee %}{% field form.employee %}{% endif %}{% field form.leave_type %}
+{% field form.start_date "col-md-3" %}{% field form.end_date "col-md-3" %}{% field form.half_day "col-md-3" %}{% field form.period_year "col-md-3" %}
+{% field form.attachment %}{% field form.reason %}
+</div>

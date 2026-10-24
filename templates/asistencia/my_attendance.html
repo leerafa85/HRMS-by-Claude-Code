@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Mi asistencia{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-3">Mi asistencia {{ year }}</h1>
+<div class="row g-3">
+<div class="col-lg-4"><div class="card"><div class="card-header">Inasistencias ({{ absences|length }})</div><ul class="list-group list-group-flush small">{% for a in absences %}<li class="list-group-item">{{ a.date|date:"d/m/Y" }} · {{ a.get_reason_display }} · {{ a.justified|yesno:"Justificada,Injustificada" }}</li>{% empty %}<li class="list-group-item text-muted">Sin registros.</li>{% endfor %}</ul></div></div>
+<div class="col-lg-4"><div class="card"><div class="card-header">Llegadas tarde ({{ tardies|length }})</div><ul class="list-group list-group-flush small">{% for t in tardies %}<li class="list-group-item">{{ t.date|date:"d/m/Y" }} · {{ t.arrival_time|time:"H:i" }} ({{ t.minutes_late }} min)</li>{% empty %}<li class="list-group-item text-muted">Sin registros.</li>{% endfor %}</ul></div></div>
+<div class="col-lg-4"><div class="card"><div class="card-header">Horas extras</div><ul class="list-group list-group-flush small">{% for o in overtimes %}<li class="list-group-item">{{ o.date|date:"d/m/Y" }} · {{ o.hours|num:2 }} h al {{ o.rate }} % · {{ o.get_status_display }}</li>{% empty %}<li class="list-group-item text-muted">Sin registros.</li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}

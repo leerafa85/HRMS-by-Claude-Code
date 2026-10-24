@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Anuncios{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 page-title me-auto">Anuncios</h1>{% if create_url %}<a href="{{ create_url }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo anuncio</a>{% endif %}</div>
+{% for row in rows %}{% with a=row.obj %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex"><h2 class="h5 me-auto">{% if a.pinned %}<i class="bi bi-pin-angle-fill text-danger me-1"></i>{% endif %}<a href="{% url 'anuncios:anuncio_detail' a.pk %}" class="text-body">{{ a.title }}</a></h2>
+  {% if row.update_url %}<a href="{{ row.update_url }}" class="btn btn-sm btn-link"><i class="bi bi-pencil"></i></a>{% endif %}{% if row.delete_url %}<a href="{{ row.delete_url }}" class="btn btn-sm btn-link text-danger"><i class="bi bi-trash"></i></a>{% endif %}</div>
+  <div class="small text-muted mb-2">{{ a.publish_at|date:"d/m/Y H:i" }} · {{ a.created_by|default:"RRHH" }}{% if a.departments.exists %} · Para: {{ a.departments.all|join:", " }}{% endif %}</div>
+  <div>{{ a.body|truncatewords:60|linebreaks }}</div>
+</div></div>
+{% endwith %}{% empty %}<p class="text-muted">No hay anuncios.</p>{% endfor %}
+{% include "partials/pagination.html" %}
+{% endblock %}

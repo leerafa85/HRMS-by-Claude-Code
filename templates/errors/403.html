@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Sin acceso{% endblock %}
+{% block content %}
+<div class="text-center py-5"><i class="bi bi-shield-lock display-3 text-warning"></i>
+<h1 class="h4 mt-3">No tenés acceso a esta sección</h1>
+<p class="text-muted">{{ message|default:"Tu rol no tiene permisos para esta acción. Consultá con el administrador del sistema." }}</p>
+<a href="{% url 'dashboard' %}" class="btn btn-primary">Volver al inicio</a></div>
+{% endblock %}

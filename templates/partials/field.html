@@ -1,0 +1,17 @@
+{% load hrms %}<div class="{{ col }} mb-3">
+  {% if field|widget_type == "checkboxinput" %}
+  <div class="form-check mt-md-4">
+    {{ field }}<label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  </div>
+  {% elif field|widget_type == "checkboxselectmultiple" %}
+  <label class="form-label d-block">{{ field.label }}</label>
+  <div class="d-flex flex-wrap gap-3">
+  {% for opt in field %}<div class="form-check">{{ opt.tag }}<label class="form-check-label" for="{{ opt.id_for_label }}">{{ opt.choice_label }}</label></div>{% empty %}<span class="text-muted small">No hay opciones.</span>{% endfor %}
+  </div>
+  {% else %}
+  <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+  {% if field.errors %}<div class="is-invalid-wrap">{{ field }}</div>{% else %}{{ field }}{% endif %}
+  {% endif %}
+  {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+  {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+</div>

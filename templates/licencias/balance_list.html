@@ -1,0 +1,13 @@
+{% extends "crud/list.html" %}{% load hrms %}
+{% block before_table %}
+{% if can_admin %}
+<div class="card card-body mb-3"><form method="post" action="{% url 'licencias:saldo_generar' %}" class="row g-2 align-items-end">{% csrf_token %}
+  <div class="col-12 small text-muted">Generar saldos de vacaciones según antigüedad al 31/12 (art. 150 LCT: 14, 21, 28 o 35 días corridos; si no trabajó la mitad de los días hábiles del año, 1 día cada 20 trabajados — art. 153).</div>
+  <div class="col-md-2"><label class="form-label">{{ generate_form.year.label }}</label>{{ generate_form.year }}</div>
+  <div class="col-md-3"><div class="form-check">{{ generate_form.carry_over }}<label class="form-check-label small" for="{{ generate_form.carry_over.id_for_label }}">{{ generate_form.carry_over.label }}</label></div></div>
+  <div class="col-md-3"><div class="form-check">{{ generate_form.carry_over_cap }}<label class="form-check-label small" for="{{ generate_form.carry_over_cap.id_for_label }}">{{ generate_form.carry_over_cap.label }}</label></div></div>
+  <div class="col-md-2"><div class="form-check">{{ generate_form.overwrite }}<label class="form-check-label small" for="{{ generate_form.overwrite.id_for_label }}">{{ generate_form.overwrite.label }}</label></div></div>
+  <div class="col-md-2"><button class="btn btn-primary btn-sm w-100"><i class="bi bi-magic me-1"></i>Generar</button></div>
+</form></div>
+{% endif %}
+{% endblock %}

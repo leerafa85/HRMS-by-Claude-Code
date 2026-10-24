@@ -1,0 +1,100 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <h1 class="h4 page-title me-auto">¡Hola, {{ user.first_name|default:user.username }}!</h1>
+  {% if my_employee %}<a href="{% url 'licencias:mis_licencias' %}" class="btn btn-primary btn-sm"><i class="bi bi-airplane me-1"></i>Solicitar vacaciones / licencia</a>{% endif %}
+</div>
+
+{% if stats %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="text-muted small">Dotación activa</div><div class="stat-value">{{ stats.headcount }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="text-muted small">Ingresos del mes</div><div class="stat-value text-success">{{ stats.hires_month }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="text-muted small">Egresos del mes</div><div class="stat-value text-danger">{{ stats.exits_month }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body"><div class="text-muted small">Ausentes hoy</div><div class="stat-value text-warning">{{ on_leave_today|length }}</div></div></div></div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    {% if my_employee %}
+    <div class="card mb-3"><div class="card-header">Mi resumen</div><div class="card-body">
+      <div class="row">
+        <div class="col-md-4"><div class="text-muted small">Vacaciones disponibles{% if my_vacation %} ({{ my_vacation.year }}){% endif %}</div>
+          <div class="fs-3 fw-bold">{% if my_vacation %}{{ my_vacation.available }} días{% else %}—{% endif %}</div></div>
+        <div class="col-md-8"><div class="text-muted small mb-1">Últimas solicitudes</div>
+          {% for r in my_requests %}<div class="small"><span class="leave-dot me-1" style="background:{{ r.leave_type.color }}"></span>{{ r.leave_type }} · {{ r.start_date|date:"d/m" }}–{{ r.end_date|date:"d/m/Y" }} <span class="badge text-bg-light">{{ r.get_status_display }}</span></div>{% empty %}<div class="small text-muted">Sin solicitudes.</div>{% endfor %}
+        </div>
+      </div>
+    </div></div>
+    {% endif %}
+
+    {% if pending_requests %}
+    <div class="card mb-3"><div class="card-header d-flex">Solicitudes pendientes de aprobación<a href="{% url 'licencias:aprobaciones' %}" class="ms-auto small">Ver todas</a></div>
+      <ul class="list-group list-group-flush">
+      {% for r in pending_requests %}<li class="list-group-item d-flex align-items-center"><a href="{% url 'licencias:solicitud_detail' r.pk %}" class="me-auto">{{ r.employee.full_name }}</a><span class="small text-muted me-2">{{ r.leave_type }} · {{ r.start_date|date:"d/m" }} al {{ r.end_date|date:"d/m" }} ({{ r.days|num:1 }} d)</span></li>{% endfor %}
+      </ul></div>
+    {% endif %}
+
+    <div class="card mb-3"><div class="card-header">Fuera de la oficina hoy</div>
+      <ul class="list-group list-group-flush">
+      {% for r in on_leave_today %}<li class="list-group-item small"><span class="leave-dot me-2" style="background:{{ r.leave_type.color }}"></span>{{ r.employee.full_name }} — {{ r.leave_type }} (vuelve el {{ r.end_date|date:"d/m" }})</li>{% empty %}<li class="list-group-item small text-muted">Todos presentes.</li>{% endfor %}
+      </ul></div>
+
+    {% if announcements %}
+    <div class="card mb-3"><div class="card-header">Anuncios</div>
+      <div class="list-group list-group-flush">
+      {% for a in announcements %}<a href="{% url 'anuncios:anuncio_detail' a.pk %}" class="list-group-item list-group-item-action">{% if a.pinned %}<i class="bi bi-pin-angle-fill text-danger me-1"></i>{% endif %}<strong>{{ a.title }}</strong><div class="small text-muted">{{ a.body|truncatechars:140 }}</div></a>{% endfor %}
+      </div></div>
+    {% endif %}
+
+    {% if my_tasks %}
+    <div class="card mb-3"><div class="card-header">Mis tareas de onboarding / offboarding</div>
+      <ul class="list-group list-group-flush">
+      {% for t in my_tasks %}<li class="list-group-item small d-flex"><a href="{% url 'onboarding:checklist_detail' t.checklist_id %}" class="me-auto">{{ t.title }} — {{ t.checklist.employee.full_name }}</a>{% if t.due_date %}<span class="{% if t.is_overdue %}text-danger{% else %}text-muted{% endif %}">{{ t.due_date|date:"d/m/Y" }}</span>{% endif %}</li>{% endfor %}
+      </ul></div>
+    {% endif %}
+
+    {% if open_jobs %}
+    <div class="card mb-3"><div class="card-header">Búsquedas abiertas</div>
+      <ul class="list-group list-group-flush">
+      {% for j in open_jobs %}<li class="list-group-item small d-flex"><a href="{% url 'reclutamiento:busqueda_detail' j.pk %}" class="me-auto">{{ j.title }}</a><span class="badge text-bg-primary">{{ j.n }} postulantes</span></li>{% endfor %}
+      </ul></div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-header"><i class="bi bi-balloon me-1"></i>Celebraciones (próximos 30 días)</div>
+      <ul class="list-group list-group-flush">
+      {% for c in celebrations %}<li class="list-group-item small d-flex align-items-center">{% include "partials/avatar.html" with e=c.employee size="avatar-sm" %}<span class="ms-2 me-auto">{{ c.employee.full_name }}<br><span class="text-muted">{% if c.kind == "cumple" %}🎂 Cumpleaños{% else %}🎉 {{ c.years }} año{{ c.years|pluralize }} en la empresa{% endif %}</span></span><span>{% if c.date == today %}<strong>¡Hoy!</strong>{% else %}{{ c.date|date:"d/m" }}{% endif %}</span></li>{% empty %}<li class="list-group-item small text-muted">Sin celebraciones próximas.</li>{% endfor %}
+      </ul></div>
+
+    <div class="card mb-3"><div class="card-header"><i class="bi bi-flag me-1"></i>Próximos feriados</div>
+      <ul class="list-group list-group-flush">
+      {% for h in holidays %}<li class="list-group-item small d-flex"><span class="me-auto">{{ h.name }}</span><span class="text-muted">{{ h.date|date:"D d/m" }}</span></li>{% empty %}<li class="list-group-item small text-muted">No hay feriados cargados.</li>{% endfor %}
+      </ul></div>
+
+    {% if trial_ending or contracts_ending %}
+    <div class="card mb-3"><div class="card-header text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Vencimientos</div>
+      <ul class="list-group list-group-flush">
+      {% for e in trial_ending %}<li class="list-group-item small"><a href="{% url 'empleados:empleado_detail' e.pk %}">{{ e.full_name }}</a>: fin de período de prueba {{ e.trial_end_date|date:"d/m/Y" }}</li>{% endfor %}
+      {% for e in contracts_ending %}<li class="list-group-item small"><a href="{% url 'empleados:empleado_detail' e.pk %}">{{ e.full_name }}</a>: fin de contrato {{ e.contract_end_date|date:"d/m/Y" }}</li>{% endfor %}
+      </ul></div>
+    {% endif %}
+
+    {% if expiring_docs %}
+    <div class="card mb-3"><div class="card-header"><i class="bi bi-file-earmark-x me-1"></i>Documentos vencidos o por vencer</div>
+      <ul class="list-group list-group-flush">
+      {% for d in expiring_docs %}<li class="list-group-item small"><a href="{% url 'empleados:empleado_detail' d.employee_id %}#documentos">{{ d.employee.full_name }}</a>: {{ d.title }} <span class="{% if d.is_expired %}text-danger{% else %}text-warning{% endif %}">{{ d.expiry_date|date:"d/m/Y" }}</span></li>{% endfor %}
+      </ul></div>
+    {% endif %}
+
+    {% if interviews %}
+    <div class="card mb-3"><div class="card-header"><i class="bi bi-camera-video me-1"></i>Próximas entrevistas</div>
+      <ul class="list-group list-group-flush">
+      {% for i in interviews %}<li class="list-group-item small"><a href="{% url 'reclutamiento:postulacion_detail' i.application_id %}">{{ i.application.candidate.full_name }}</a> · {{ i.application.job }}<br><span class="text-muted">{{ i.scheduled_at|date:"D d/m H:i" }}</span></li>{% endfor %}
+      </ul></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

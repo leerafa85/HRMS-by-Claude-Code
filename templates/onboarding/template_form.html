@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Plantilla{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body">
+<h1 class="h5 mb-3">{% if tpl.pk %}Editar plantilla{% else %}Nueva plantilla{% endif %}</h1>
+<form method="post">{% csrf_token %}{% include "partials/form_errors.html" %}
+  <div class="row">{% for f in form %}{% if f|widget_type == "textarea" %}{% field f "col-12" %}{% else %}{% field f "col-md-4" %}{% endif %}{% endfor %}</div>
+  <h2 class="h6 mt-2">Tareas</h2>
+  {{ formset.management_form }}
+  {% for e in formset.non_form_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}
+  <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th style="width:70px">Orden</th><th>Tarea</th><th>Responsable</th><th>Asignar a</th><th style="width:110px">Plazo (días)</th><th>Detalle</th><th>Borrar</th></tr></thead><tbody>
+  {% for f in formset %}<tr>{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+    <td>{{ f.order }}</td><td>{{ f.title }}{% for e in f.title.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td><td>{{ f.responsible }}</td><td>{{ f.default_assignee }}</td><td>{{ f.due_offset_days }}</td><td>{{ f.description }}</td><td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="small text-muted">Plazo: días respecto de la fecha de ingreso/egreso (negativo = antes). Guardá para agregar más filas.</p>
+  <button class="btn btn-primary">Guardar</button> <a href="{% url 'onboarding:plantilla_list' %}" class="btn btn-link">Cancelar</a>
+</form></div></div>
+{% endblock %}

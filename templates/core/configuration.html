@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Configuración{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-3">Configuración</h1>
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="card-header">Datos de la empresa y parámetros</div><div class="card-body">
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}{% include "partials/form_errors.html" %}
+      <fieldset {% if not can_edit %}disabled{% endif %}><div class="row">{% for f in form %}{% field f %}{% endfor %}</div></fieldset>
+      {% if can_edit %}<button class="btn btn-primary">Guardar</button>{% endif %}
+    </form>
+  </div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header">Tablas del sistema</div>
+    <div class="list-group list-group-flush">
+      <a class="list-group-item list-group-item-action" href="{% url 'empleados:area_list' %}"><i class="bi bi-diagram-3 me-2"></i>Áreas / departamentos</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'empleados:puesto_list' %}"><i class="bi bi-briefcase me-2"></i>Puestos</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'empleados:sede_list' %}"><i class="bi bi-geo-alt me-2"></i>Sucursales / sedes</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'licencias:tipo_list' %}"><i class="bi bi-calendar2-week me-2"></i>Tipos de licencia</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'licencias:feriado_list' %}"><i class="bi bi-flag me-2"></i>Feriados</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'onboarding:plantilla_list' %}"><i class="bi bi-list-check me-2"></i>Plantillas de onboarding/offboarding</a>
+      {% if user|can_view:"usuarios" %}
+      <a class="list-group-item list-group-item-action" href="{% url 'core:usuario_list' %}"><i class="bi bi-person-gear me-2"></i>Usuarios</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'core:rol_list' %}"><i class="bi bi-shield-lock me-2"></i>Roles y permisos</a>
+      {% endif %}
+    </div></div></div>
+</div>
+{% endblock %}

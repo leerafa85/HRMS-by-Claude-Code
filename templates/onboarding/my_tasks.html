@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Mis tareas{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-3">Mis tareas asignadas</h1>
+<div class="card"><ul class="list-group list-group-flush">
+{% for t in tasks %}<li class="list-group-item d-flex align-items-center gap-2">
+  <form method="post" action="{% url 'onboarding:tarea_toggle' t.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="btn btn-sm {% if t.done %}btn-success{% else %}btn-outline-secondary{% endif %}"><i class="bi bi-check-lg"></i></button></form>
+  <div class="me-auto"><span class="{% if t.done %}text-decoration-line-through text-muted{% endif %}">{{ t.title }}</span><div class="small text-muted">{{ t.checklist.name }} · {{ t.checklist.employee.full_name }}</div></div>
+  {% if t.due_date %}<span class="small {% if t.is_overdue %}text-danger{% else %}text-muted{% endif %}">{{ t.due_date|date:"d/m/Y" }}</span>{% endif %}
+</li>{% empty %}<li class="list-group-item text-muted">No tenés tareas asignadas.</li>{% endfor %}
+</ul></div>
+{% endblock %}

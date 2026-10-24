@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% load hrms %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 page-title me-auto">{{ title }}</h1>
+  {% block toolbar_extra %}{% endblock %}
+  {% for label, url, icon in extra_actions %}<a href="{{ url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-{{ icon }} me-1"></i>{{ label }}</a>{% endfor %}
+  {% if export_url %}<a href="{{ export_url }}?{{ querystring }}" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel</a>{% endif %}
+  {% if create_url %}<a href="{{ create_url }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>{{ create_label }}</a>{% endif %}
+</div>
+{% block before_table %}{% endblock %}
+{% if search_enabled or filter_defs %}
+<form class="card card-body py-2 mb-3" method="get">
+  <div class="row g-2 align-items-end">
+    {% if search_enabled %}<div class="col-md-4"><input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Buscar…"></div>{% endif %}
+    {% for f in filter_defs %}
+    <div class="col-md-2 col-6"><select name="{{ f.param }}" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">{{ f.label }}: todos</option>
+      {% for val, lab in f.options %}<option value="{{ val }}" {% if f.value == val|stringformat:"s" %}selected{% endif %}>{{ lab }}</option>{% endfor %}
+    </select></div>
+    {% endfor %}
+    <div class="col-auto"><button class="btn btn-sm btn-secondary"><i class="bi bi-search"></i></button>
+      {% if querystring %}<a href="?" class="btn btn-sm btn-link">Limpiar</a>{% endif %}</div>
+  </div>
+</form>
+{% endif %}
+<div class="card"><div class="table-responsive">
+<table class="table table-hover table-sm mb-0">
+  <thead><tr>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th class="text-end"></th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+  <tr>
+    {% for cell in row.cells %}
+    <td>{% if cell.link and row.detail_url %}<a href="{{ row.detail_url }}" class="fw-medium">{{ cell.value }}</a>{% elif cell.badge %}<span class="badge text-bg-{{ cell.badge }}">{{ cell.value }}</span>{% else %}{{ cell.value }}{% endif %}</td>
+    {% endfor %}
+    <td class="text-end text-nowrap">
+      {% block row_actions %}{% endblock %}
+      {% if row.detail_url %}<a href="{{ row.detail_url }}" class="btn btn-sm btn-link px-1" title="Ver"><i class="bi bi-eye"></i></a>{% endif %}
+      {% if row.update_url %}<a href="{{ row.update_url }}" class="btn btn-sm btn-link px-1" title="Editar"><i class="bi bi-pencil"></i></a>{% endif %}
+      {% if row.delete_url %}<a href="{{ row.delete_url }}" class="btn btn-sm btn-link px-1 text-danger" title="Eliminar"><i class="bi bi-trash"></i></a>{% endif %}
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="{{ columns|length|add:1 }}" class="text-center text-muted py-4">No hay registros.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% include "partials/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Organigrama{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-1">Organigrama</h1>
+<p class="small text-muted">Armado a partir del «jefe directo» de cada legajo.</p>
+<div class="card"><div class="card-body org-tree"><ul>{% for node in tree %}{% include "empleados/_org_node.html" %}{% empty %}<li class="text-muted">No hay empleados activos.</li>{% endfor %}</ul></div></div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Mi equipo{% endblock %}
+{% block content %}
+<h1 class="h4 page-title mb-3">Mi equipo</h1>
+<div class="row g-3">
+<div class="col-lg-7"><div class="card"><div class="card-header">Colaboradores directos ({{ team|length }})</div>
+<ul class="list-group list-group-flush">{% for e in team %}<li class="list-group-item d-flex align-items-center">{% include "partials/avatar.html" with e=e size="avatar-sm" %}<a class="ms-2 me-auto" href="{% url 'empleados:mi_equipo_detalle' e.pk %}">{{ e.full_name }}</a><span class="small text-muted">{{ e.position|default:"" }}</span></li>{% empty %}<li class="list-group-item text-muted small">Sin colaboradores a cargo.</li>{% endfor %}</ul></div>
+<a href="{% url 'licencias:calendario' %}" class="btn btn-sm btn-outline-primary mt-2"><i class="bi bi-calendar3 me-1"></i>Calendario de ausencias del equipo</a></div>
+<div class="col-lg-5">
+<div class="card mb-3"><div class="card-header">Pendientes de mi aprobación</div><ul class="list-group list-group-flush">{% for r in pending %}<li class="list-group-item small"><a href="{% url 'licencias:solicitud_detail' r.pk %}">{{ r.employee.full_name }}</a> · {{ r.leave_type }} · {{ r.start_date|date:"d/m" }}–{{ r.end_date|date:"d/m" }} ({{ r.days|num:1 }} d)</li>{% empty %}<li class="list-group-item small text-muted">Nada pendiente.</li>{% endfor %}</ul></div>
+<div class="card"><div class="card-header">Próximas ausencias</div><ul class="list-group list-group-flush">{% for r in upcoming %}<li class="list-group-item small"><span class="leave-dot me-1" style="background:{{ r.leave_type.color }}"></span>{{ r.employee.full_name }} · {{ r.leave_type }} · {{ r.start_date|date:"d/m" }}–{{ r.end_date|date:"d/m" }}</li>{% empty %}<li class="list-group-item small text-muted">Sin ausencias programadas.</li>{% endfor %}</ul></div>
+</div></div>
+{% endblock %}

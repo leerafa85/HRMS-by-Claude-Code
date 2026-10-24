@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}{{ cl.name }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <h1 class="h4 page-title me-auto">{{ cl.name }} · <a href="{% url 'empleados:empleado_detail' cl.employee_id %}">{{ cl.employee.full_name }}</a></h1>
+  {% if can_admin %}<a href="{% url 'onboarding:checklist_delete' cl.pk %}" class="btn btn-sm btn-outline-danger">Eliminar checklist</a>{% endif %}
+</div>
+<div class="small text-muted mb-2">{{ cl.get_kind_display }} · Fecha de referencia {{ cl.start_date|date:"d/m/Y" }}</div>
+<div class="progress mb-3" style="height:10px"><div class="progress-bar bg-success" style="width:{{ cl.progress }}%"></div></div>
+<div class="card mb-3"><ul class="list-group list-group-flush">
+{% for t in tasks %}<li class="list-group-item d-flex align-items-start gap-2">
+  <form method="post" action="{% url 'onboarding:tarea_toggle' t.pk %}">{% csrf_token %}<button class="btn btn-sm {% if t.done %}btn-success{% else %}btn-outline-secondary{% endif %}" title="Marcar"><i class="bi bi-check-lg"></i></button></form>
+  <div class="me-auto"><div class="{% if t.done %}text-decoration-line-through text-muted{% endif %}">{{ t.title }}</div>
+    <div class="small text-muted">{% if t.responsible %}{{ t.responsible }} · {% endif %}{{ t.assignee|default:"Sin asignar" }}{% if t.due_date %} · vence <span class="{% if t.is_overdue %}text-danger{% endif %}">{{ t.due_date|date:"d/m/Y" }}</span>{% endif %}{% if t.done %} · hecha por {{ t.done_by }} el {{ t.done_at|date:"d/m/Y" }}{% endif %}</div>
+    {% if t.description %}<div class="small">{{ t.description }}</div>{% endif %}</div>
+  {% if can_edit %}<form method="post" action="{% url 'onboarding:tarea_delete' t.pk %}">{% csrf_token %}<button class="btn btn-sm btn-link text-danger" data-confirm="¿Eliminar la tarea?"><i class="bi bi-trash"></i></button></form>{% endif %}
+</li>{% empty %}<li class="list-group-item text-muted">Sin tareas.</li>{% endfor %}
+</ul></div>
+{% if can_edit %}<div class="card"><div class="card-header">Agregar tarea</div><div class="card-body"><form method="post">{% csrf_token %}<div class="row">{% for f in form %}{% if f|widget_type == "textarea" %}{% field f "col-12" %}{% else %}{% field f "col-md-3" %}{% endif %}{% endfor %}</div><button class="btn btn-primary btn-sm">Agregar</button></form></div></div>{% endif %}
+{% endblock %}
