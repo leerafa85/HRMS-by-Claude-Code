@@ -853,14 +853,15 @@ def ipc_import(request):
         with urllib.request.urlopen(req, timeout=10) as resp:
             items = json.loads(resp.read().decode("utf-8"))
         created = 0
-        for it in items:
-            month = datetime.date.fromisoformat(str(it["fecha"])[:10]).replace(day=1)
-            if month.year < datetime.date.today().year - 3:
-                continue
-            _, was_created = IPCValue.objects.update_or_create(
-                month=month, defaults={"variation": Decimal(str(it["valor"])), "source": "INDEC vía ArgentinaDatos"}
-            )
-            created += was_created
+        with transaction.atomic():
+            for it in items:
+                month = datetime.date.fromisoformat(str(it["fecha"])[:10]).replace(day=1)
+                if month.year < datetime.date.today().year - 3:
+                    continue
+                _, was_created = IPCValue.objects.update_or_create(
+                    month=month, defaults={"variation": Decimal(str(it["valor"])), "source": "INDEC vía ArgentinaDatos"}
+                )
+                created += was_created
         messages.success(request, f"IPC importado ({created} meses nuevos). Verificá los valores con el INDEC.")
     except Exception as e:  # red, formato inesperado, etc.
         messages.error(request, f"No se pudo importar el IPC automáticamente ({e}). Cargalo a mano con el dato del INDEC.")

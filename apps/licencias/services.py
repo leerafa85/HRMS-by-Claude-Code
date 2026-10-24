@@ -59,37 +59,36 @@ def review_request(leave_request, user, approve, comment=""):
 
 
 def notify_employee(leave_request):
-    """Envía un email al empleado con el resultado (si tiene email cargado)."""
-    from django.core.mail import send_mail
-
+    """Envía un email al empleado con el resultado (si tiene email cargado), solo si la operación se grabó."""
     emp = leave_request.employee
     to = emp.work_email or emp.personal_email
     if not to:
         return
-    send_mail(
-        f"Tu solicitud de {leave_request.leave_type} fue {leave_request.get_status_display().lower()}",
+    status = leave_request.get_status_display().lower()
+    subject = f"Tu solicitud de {leave_request.leave_type} fue {status}"
+    body = (
         f"Hola {emp.first_name}:\n\nTu solicitud de {leave_request.leave_type} del "
         f"{leave_request.start_date:%d/%m/%Y} al {leave_request.end_date:%d/%m/%Y} "
-        f"({leave_request.days} días) fue {leave_request.get_status_display().lower()}.\n"
-        + (f"\nComentario: {leave_request.review_comment}\n" if leave_request.review_comment else ""),
-        None,
-        [to],
-        fail_silently=True,
+        f"({leave_request.days} días) fue {status}.\n"
+        + (f"\nComentario: {leave_request.review_comment}\n" if leave_request.review_comment else "")
     )
+    _send_after_commit(subject, body, [to])
 
 
 def notify_approvers(leave_request):
-    from django.core.mail import send_mail
-
     manager = leave_request.employee.manager
     to = [m for m in [getattr(manager, "work_email", None)] if m]
     if to:
-        send_mail(
+        _send_after_commit(
             f"Nueva solicitud de {leave_request.leave_type}: {leave_request.employee.full_name}",
             f"{leave_request.employee.full_name} solicitó {leave_request.leave_type} del "
             f"{leave_request.start_date:%d/%m/%Y} al {leave_request.end_date:%d/%m/%Y} ({leave_request.days} días).\n"
             "Ingresá al HRMS para aprobarla o rechazarla.",
-            None,
             to,
-            fail_silently=True,
         )
+
+
+def _send_after_commit(subject, body, to):
+    from django.core.mail import send_mail
+
+    transaction.on_commit(lambda: send_mail(subject, body, None, to, fail_silently=True))

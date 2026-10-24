@@ -105,6 +105,8 @@ DATABASES = {
         conn_max_age=600,
     )
 }
+# Cada operación se graba completa o no se graba nada (sin estados intermedios si la base falla a mitad de camino).
+DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 AUTH_USER_MODEL = "core.User"
 AUTHENTICATION_BACKENDS = ["apps.core.backends.CaseInsensitiveModelBackend"]

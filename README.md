@@ -24,6 +24,7 @@ se usa desde cualquier navegador y se puede alojar en un servicio cloud (Render,
 | **Directorio y organigrama** | Directorio con foto y contacto (descarga de vCard) y organigrama generado a partir de los jefes directos. |
 | **Anuncios** | Comunicados para toda la empresa o por área, destacados y con vigencia. |
 | **Reportes** | Dotación (por área, sede, modalidad, género, convenio), altas/bajas y rotación, edad y antigüedad, ausentismo, llegadas tarde, horas extras, saldos de vacaciones y masa salarial; todos exportables a Excel y con gráficos. |
+| **Integridad de datos** | Cada operación se graba en una única transacción: o se guarda completa o no se guarda nada (sin registros a medias si la base falla durante la operación). Los emails de aviso se envían solo cuando la operación quedó grabada. |
 | **Barra de estado** | Pie con reloj en tiempo real (hora de Argentina) e indicador de conexión que verifica cada 30 s que el servidor y la base de datos respondan y acepten escrituras: verde (funcionando), amarillo (inestable: verificar los cambios) o rojo (sin conexión: los cambios no se guardan; se bloquea el envío de formularios). |
 | **Usuarios, roles y auditoría** | Usuario administrador total y **roles configurables** con nivel de acceso por módulo (sin acceso / ver / ver y editar / administrar). Registro de auditoría de altas, modificaciones, bajas, aprobaciones e inicios de sesión. |
 

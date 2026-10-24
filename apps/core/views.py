@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import redirect, render
@@ -375,6 +376,7 @@ def role_matrix(request):
 
 
 
+@transaction.non_atomic_requests
 def health(request):
     """Estado del sistema para el indicador del pie de página: verifica lectura y escritura en la base."""
     import time

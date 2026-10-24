@@ -190,7 +190,8 @@ def application_add(request):
     job = get_object_or_404(JobOpening, pk=request.POST.get("job"))
     candidate = get_object_or_404(Candidate, pk=request.POST.get("candidate"))
     try:
-        Application.objects.create(job=job, candidate=candidate)
+        with transaction.atomic():  # savepoint: el error de duplicado no invalida el resto de la operación
+            Application.objects.create(job=job, candidate=candidate)
         messages.success(request, f"{candidate.full_name} se sumó a «{job}».")
     except IntegrityError:
         messages.warning(request, "El candidato ya está postulado a esa búsqueda.")
