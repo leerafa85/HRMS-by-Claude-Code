@@ -7,8 +7,6 @@ Poder Ejecutivo puede agregar o mover fechas durante el año.
 """
 
 import datetime
-import json
-import urllib.request
 
 from .models import Holiday
 
@@ -52,18 +50,27 @@ FIXED = [
     ("12-25", "Navidad"),
 ]
 
-API_KINDS = {"inamovible": K.INAMOVIBLE, "trasladable": K.TRASLADABLE, "puente": K.PUENTE}
-
-
-def _upsert(date, name, kind):
-    obj, created = Holiday.objects.update_or_create(
-        date=date, defaults={"name": name, "kind": kind, "is_working_day_optional": kind in (K.PUENTE, K.NO_LABORABLE)}
-    )
-    return created
+def _upsert(date, name, kind, source="sistema", update_existing=True):
+    """Crea o actualiza un feriado. Nunca toca los cargados a mano. Devuelve True si lo creó."""
+    existing = Holiday.objects.filter(date=date).first()
+    if existing and (existing.source == "manual" or not update_existing):
+        return False
+    optional = kind in (K.PUENTE, K.NO_LABORABLE)
+    if existing:
+        if (existing.name, existing.kind, existing.source) != (name, kind, source):
+            existing.name, existing.kind, existing.source = name, kind, source
+            existing.is_working_day_optional = optional
+            existing.save()
+        return False
+    Holiday.objects.create(date=date, name=name, kind=kind, source=source, is_working_day_optional=optional)
+    return True
 
 
 def load_local(year):
-    """Carga los feriados conocidos del año (lista curada o, si no hay, solo los de fecha fija)."""
+    """Precarga los feriados conocidos del año si todavía no hay ninguno cargado para ese año
+    (lista curada o, si no hay, solo los de fecha fija). Después se mantienen con la actualización automática."""
+    if Holiday.objects.filter(date__year=year).exists():
+        return 0, 0
     data = HOLIDAYS.get(year)
     if data is None:
         data = [(f"{year}-{md}", name, K.INAMOVIBLE) for md, name in FIXED]
@@ -72,12 +79,8 @@ def load_local(year):
 
 
 def import_from_api(year, timeout=10):
-    url = f"https://api.argentinadatos.com/v1/feriados/{year}"
-    req = urllib.request.Request(url, headers={"User-Agent": "HRMS/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        items = json.loads(resp.read().decode("utf-8"))
-    created = 0
-    for it in items:
-        kind = API_KINDS.get(it.get("tipo", ""), K.NO_LABORABLE)
-        created += _upsert(datetime.date.fromisoformat(it["fecha"]), it.get("nombre", "Feriado"), kind)
-    return created, len(items) - created
+    """Importación manual (botón «Importar feriados»): usa la misma lógica que la actualización automática."""
+    from .sync import sync_year
+
+    result = sync_year(year, timeout=timeout)
+    return result.created, result.updated

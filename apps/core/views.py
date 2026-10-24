@@ -373,3 +373,28 @@ def role_matrix(request):
     ]
     return render(request, "core/role_matrix.html", {"roles": roles, "rows": rows, "Level": Level})
 
+
+
+def health(request):
+    """Estado del sistema para el indicador del pie de página: verifica lectura y escritura en la base."""
+    import time
+
+    from django.db import connection
+    from django.http import JsonResponse
+    from django.utils import timezone
+
+    started = time.monotonic()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        from .models import SystemTask
+
+        now = timezone.now()
+        if not SystemTask.objects.filter(key="heartbeat").update(last_success=now):
+            SystemTask.objects.create(key="heartbeat", last_success=now)
+    except Exception:
+        resp = JsonResponse({"status": "error", "db": False}, status=503)
+    else:
+        resp = JsonResponse({"status": "ok", "db": True, "db_ms": round((time.monotonic() - started) * 1000)})
+    resp["Cache-Control"] = "no-store"
+    return resp

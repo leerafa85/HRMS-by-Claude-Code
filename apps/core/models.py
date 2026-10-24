@@ -143,3 +143,21 @@ class AuditLog(models.Model):
             object_id=str(getattr(obj, "pk", "") or ""),
             description=(description or str(obj))[:300],
         )
+
+
+class SystemTask(models.Model):
+    """Estado de tareas automáticas del sistema (sincronizaciones, heartbeat de la base)."""
+
+    key = models.CharField("tarea", max_length=50, unique=True)
+    last_attempt = models.DateTimeField("último intento", null=True, blank=True)
+    last_success = models.DateTimeField("última actualización exitosa", null=True, blank=True)
+    last_error = models.TextField("último error", blank=True)
+    detail = models.CharField("detalle", max_length=250, blank=True)
+    running_since = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "tarea del sistema"
+        verbose_name_plural = "tareas del sistema"
+
+    def __str__(self):
+        return self.key

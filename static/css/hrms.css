@@ -40,3 +40,20 @@ body { background: var(--bs-tertiary-bg); }
 .leave-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 @media print { .sidebar, .topbar, .no-print { display: none !important; } main { padding: 0 !important; } }
 .is-invalid-wrap .form-control, .is-invalid-wrap .form-select { border-color: var(--bs-danger); }
+
+/* Barra de estado (pie) */
+body { padding-bottom: 34px; }
+.status-bar { position: fixed; left: 0; right: 0; bottom: 0; height: 32px; z-index: 1050; display: flex; align-items: center;
+  gap: 16px; padding: 0 14px; background: #0b1f33; color: #dfe7ef; font-size: 12.5px; }
+.status-clock { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.status-state { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 600; }
+.status-dot { width: 11px; height: 11px; border-radius: 50%; background: #8a99a8; box-shadow: 0 0 0 2px rgba(255,255,255,.15); }
+.status-ok .status-dot { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.status-warn .status-dot { background: #f1c40f; box-shadow: 0 0 6px #f1c40f; }
+.status-down .status-dot { background: #e74c3c; box-shadow: 0 0 6px #e74c3c; animation: hrms-blink 1s infinite; }
+.status-warn { background: #4a3b00; }
+.status-down { background: #5c1010; }
+.status-msg { min-width: 0; }
+@keyframes hrms-blink { 50% { opacity: .35; } }
+.sidebar { padding-bottom: 48px !important; }
+@media print { body { padding-bottom: 0; } }

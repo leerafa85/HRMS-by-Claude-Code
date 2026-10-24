@@ -6,6 +6,7 @@ from apps.core import views as core_views
 
 urlpatterns = [
     path("", core_views.dashboard, name="dashboard"),
+    path("estado/", core_views.health, name="estado"),
     path("ingresar/", auth_views.LoginView.as_view(template_name="auth/login.html", redirect_authenticated_user=True), name="login"),
     path("salir/", auth_views.LogoutView.as_view(), name="logout"),
     path(

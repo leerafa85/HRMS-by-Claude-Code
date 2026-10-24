@@ -478,6 +478,9 @@ class HolidayList(HRListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["year"] = int(self.request.GET.get("anio") or datetime.date.today().year)
+        from .sync import last_update
+
+        ctx["holiday_sync"] = last_update()
         return ctx
 
 

@@ -4,3 +4,7 @@
 {% if can_edit %}<form method="post" action="{% url 'licencias:feriado_importar' %}">{% csrf_token %}<input type="hidden" name="anio" value="{{ year }}"><button class="btn btn-sm btn-outline-primary" title="Consulta api.argentinadatos.com"><i class="bi bi-cloud-download me-1"></i>Importar feriados {{ year }}</button></form>{% endif %}
 {% endblock %}
 {% block before_table %}<p class="small text-muted">Los feriados se usan para calcular días hábiles en licencias y el recargo del 100 % en horas extras. Verificá las fechas con el calendario oficial (argentina.gob.ar/interior/feriados).</p>{% endblock %}
+{% block after_table %}
+<p class="small text-muted mt-3 mb-0"><i class="bi bi-arrow-repeat me-1"></i>Última actualización:
+  {% if holiday_sync.last_success %}{{ holiday_sync.last_success|date:"d/m/Y H:i" }} hs{% else %}pendiente{% endif %}</p>
+{% endblock %}

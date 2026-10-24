@@ -60,5 +60,10 @@ class GenerateBalancesForm(BaseForm):
 class HolidayForm(BaseModelForm):
     class Meta:
         model = Holiday
-        fields = "__all__"
+        exclude = ["source"]
         widgets = {"date": DATE}
+
+    def save(self, commit=True):
+        # Lo que se carga o edita a mano queda protegido de la actualización automática.
+        self.instance.source = "manual"
+        return super().save(commit)

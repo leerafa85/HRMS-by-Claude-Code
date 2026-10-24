@@ -7,6 +7,7 @@ producción (PostgreSQL en Render, Railway, Fly.io, un VPS, etc.).
 """
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -75,6 +76,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.HolidaySyncMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -123,7 +125,8 @@ LANGUAGE_CODE = "es-ar"
 TIME_ZONE = "America/Argentina/Buenos_Aires"
 USE_I18N = True
 USE_TZ = True
-USE_THOUSAND_SEPARATOR = True
+# Los importes se formatean con los filtros propios (ars, num); así los años y IDs no llevan punto de miles.
+USE_THOUSAND_SEPARATOR = False
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -145,6 +148,9 @@ MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", BASE_DIR / "media"))
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024
 HRMS_MAX_UPLOAD_MB = int(os.environ.get("HRMS_MAX_UPLOAD_MB", "10"))
+
+# Actualización automática semanal de feriados (se desactiva en los tests).
+HRMS_HOLIDAY_AUTO_SYNC = env_bool("HRMS_HOLIDAY_AUTO_SYNC", "test" not in sys.argv)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

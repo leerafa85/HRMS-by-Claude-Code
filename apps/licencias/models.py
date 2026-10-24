@@ -25,6 +25,11 @@ class Holiday(models.Model):
     date = models.DateField("fecha", unique=True)
     name = models.CharField("motivo", max_length=150)
     kind = models.CharField("tipo", max_length=15, choices=Kind.choices, default=Kind.INAMOVIBLE)
+    source = models.CharField(
+        "origen", max_length=10, default="manual",
+        choices=[("manual", "Cargado a mano"), ("sistema", "Precargado"), ("api", "Actualización automática")],
+        help_text="Los feriados cargados a mano nunca se modifican ni se borran en la actualización automática.",
+    )
     is_working_day_optional = models.BooleanField(
         "optativo para el empleador",
         default=False,
