@@ -8,10 +8,16 @@ MENU = [
     ("Personas", [
         ("Empleados", "empleados:empleado_list", "people", Module.EMPLEADOS, Level.VER),
         ("Directorio", "empleados:directorio", "person-lines-fill", None, None),
+        ("Legajos incompletos", "empleados:legajos_incompletos", "clipboard-x", Module.EMPLEADOS, Level.VER),
         ("Organigrama", "empleados:organigrama", "diagram-3", None, None),
         ("Documentos", "empleados:documento_list", "folder2-open", Module.DOCUMENTOS, Level.VER),
         ("Salarios", "empleados:salario_list", "cash-coin", Module.SALARIOS, Level.VER),
         ("Próximos ajustes", "empleados:proximos_ajustes", "graph-up-arrow", Module.SALARIOS, Level.VER),
+    ]),
+    ("Pagos", [
+        ("Adelantos de sueldo", "pagos:adelanto_list", "wallet2", Module.PAGOS, Level.VER),
+        ("Informe de adelantos", "pagos:adelanto_informe", "file-earmark-bar-graph", Module.PAGOS, Level.VER),
+        ("Liquidaciones finales", "pagos:liquidacion_list", "file-earmark-ruled", Module.PAGOS, Level.VER),
     ]),
     ("Tiempo libre", [
         ("Solicitudes", "licencias:solicitud_list", "calendar2-check", Module.LICENCIAS, Level.VER),

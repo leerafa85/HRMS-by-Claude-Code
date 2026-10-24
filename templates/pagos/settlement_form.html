@@ -1,0 +1,95 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:1100px"><div class="card-body">
+  <h1 class="h5 mb-3">{{ title }}</h1>
+  <form method="post" enctype="multipart/form-data" novalidate id="setForm">{% csrf_token %}
+    {% include "partials/form_errors.html" %}
+    <div class="row">
+      {% field form.employee "col-md-4" %}{% field form.reason "col-md-4" %}{% field form.status "col-md-4" %}
+      {% field form.termination_date "col-md-3" %}{% field form.notice_date "col-md-3" %}{% field form.due_date "col-md-3" %}{% field form.payment_method "col-md-3" %}
+    </div>
+
+    <h2 class="h6 text-primary border-bottom pb-1 mt-2">Detalle de la liquidación</h2>
+    <p class="small text-muted mb-2">Cargá cada concepto como <strong>haber</strong> (suma a favor del empleado) o <strong>descuento</strong> (resta). Los importes los define el liquidador; el sistema calcula subtotales, total a pagar y saldo.</p>
+    {{ formset.management_form }}
+    {% for e in formset.non_form_errors %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+    <datalist id="concepts">{% for c in concepts %}<option value="{{ c }}">{% endfor %}</datalist>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-2">
+      <thead><tr><th>Concepto</th><th style="width:200px">Tipo</th><th style="width:170px">Importe ($)</th><th>Detalle / cálculo</th><th style="width:70px" class="text-center">Quitar</th></tr></thead>
+      <tbody id="itemRows">
+      {% for f in formset %}
+        <tr class="item-row">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+          <td>{{ f.concept }}{% for e in f.concept.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+          <td>{{ f.kind }}</td>
+          <td>{{ f.amount }}{% for e in f.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+          <td>{{ f.detail }}</td>
+          <td class="text-center">{% if f.instance.pk %}{{ f.DELETE }}{% else %}<button type="button" class="btn btn-sm btn-link text-danger js-remove"><i class="bi bi-x-circle"></i></button>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <template id="emptyRow"><tr class="item-row">{% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+      <td>{{ formset.empty_form.concept }}</td><td>{{ formset.empty_form.kind }}</td><td>{{ formset.empty_form.amount }}</td><td>{{ formset.empty_form.detail }}</td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger js-remove"><i class="bi bi-x-circle"></i></button></td></tr></template>
+    <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="addItem"><i class="bi bi-plus-lg me-1"></i>Agregar concepto</button>
+
+    {% if pending_advances %}
+    <div class="alert alert-info small py-2">El empleado tiene <strong>{{ pending_advances|length }}</strong> adelanto(s) pagados sin descontar; se agregaron como descuento.
+      <div class="form-check mt-1"><input class="form-check-input" type="checkbox" name="descontar_adelantos" value="1" id="descAdv" checked>
+      <label class="form-check-label" for="descAdv">Al guardar, marcar esos adelantos como descontados en esta liquidación</label></div></div>
+    {% endif %}
+
+    <div class="card bg-body-tertiary mb-3"><div class="card-body py-2"><div class="row text-center">
+      <div class="col-4"><div class="small text-muted">Haberes</div><div class="fs-5 fw-semibold" id="tE">—</div></div>
+      <div class="col-4"><div class="small text-muted">− Descuentos</div><div class="fs-5 fw-semibold" id="tD">—</div></div>
+      <div class="col-4"><div class="small text-muted">= Total a pagar</div><div class="fs-5 fw-bold text-primary" id="tT">—</div></div>
+    </div></div></div>
+
+    <div class="row">{% field form.prepared_by %}{% field form.attachment %}{% field form.notes "col-12" %}</div>
+    <div class="d-flex gap-2"><button class="btn btn-primary">Guardar</button>{% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-link">Cancelar</a>{% endif %}</div>
+  </form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const rows = document.getElementById("itemRows"), total = document.getElementById("id_items-TOTAL_FORMS");
+  const tpl = document.getElementById("emptyRow").innerHTML;
+  const fmt = n => "$ " + n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const num = v => { v = (v || "").toString().trim(); if (v.includes(",")) v = v.replace(/\./g, "").replace(",", "."); const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  function recalc() {
+    let e = 0, d = 0;
+    rows.querySelectorAll(".item-row").forEach(r => {
+      const del = r.querySelector('input[type=checkbox][name$="-DELETE"]');
+      if (del && del.checked) return;
+      const amt = num((r.querySelector('input[name$="-amount"]') || {}).value);
+      const kind = (r.querySelector('select[name$="-kind"]') || {}).value;
+      if (kind === "descuento") d += amt; else e += amt;
+    });
+    document.getElementById("tE").textContent = fmt(e);
+    document.getElementById("tD").textContent = fmt(d);
+    document.getElementById("tT").textContent = fmt(e - d);
+  }
+  document.getElementById("addItem").addEventListener("click", function () {
+    const i = parseInt(total.value, 10);
+    rows.insertAdjacentHTML("beforeend", tpl.replace(/__prefix__/g, i));
+    total.value = i + 1;
+    rows.lastElementChild.querySelector('input[name$="-concept"]').focus();
+  });
+  rows.addEventListener("click", function (ev) {
+    const btn = ev.target.closest(".js-remove"); if (!btn) return;
+    const row = btn.closest(".item-row");
+    row.querySelectorAll("input").forEach(i => { if (i.type !== "hidden") i.value = ""; });
+    row.style.display = "none"; recalc();
+  });
+  document.getElementById("setForm").addEventListener("input", recalc);
+  document.getElementById("setForm").addEventListener("change", recalc);
+  {% if not object %}
+  const emp = document.getElementById("id_employee");
+  emp.addEventListener("change", function () { const u = new URL(location.href); u.searchParams.set("empleado", emp.value); location.href = u; });
+  {% endif %}
+  recalc();
+})();
+</script>
+{% endblock %}

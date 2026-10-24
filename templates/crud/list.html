@@ -32,7 +32,7 @@
   {% for row in rows %}
   <tr>
     {% for cell in row.cells %}
-    <td>{% if cell.link and row.detail_url %}<a href="{{ row.detail_url }}" class="fw-medium">{{ cell.value }}</a>{% elif cell.badge %}<span class="badge text-bg-{{ cell.badge }}">{{ cell.value }}</span>{% else %}{{ cell.value }}{% endif %}</td>
+    <td{% if cell.nowrap %} class="text-nowrap text-end"{% endif %}>{% if cell.link and row.detail_url %}<a href="{{ row.detail_url }}" class="fw-medium">{{ cell.value }}</a>{% elif cell.badge %}<span class="badge text-bg-{{ cell.badge }}">{{ cell.value }}</span>{% else %}{{ cell.value }}{% endif %}</td>
     {% endfor %}
     <td class="text-end text-nowrap">
       {% block row_actions %}{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "crud/list.html" %}{% load hrms %}
+{% block before_table %}
+<div class="row g-2 mb-3">
+  <div class="col-md-8"><div class="card h-100"><div class="card-body py-2 small">
+    <div class="fw-semibold mb-1">Totales de la selección</div>
+    <div>{{ totals.2 }} adelantado · {{ totals.5 }} · {{ totals.6 }} · {{ totals.7 }}</div>
+    <div class="text-muted mt-1">Los adelantos se descuentan del sueldo del mes indicado. Al liquidar, marcalos como descontados.</div>
+  </div></div></div>
+  {% if can_admin %}
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-2">
+    <form method="post" action="{% url 'pagos:adelanto_descontar' %}" class="row g-2 align-items-end">{% csrf_token %}
+      <div class="col-7"><label class="form-label small">{{ mark_form.period.label }}</label>{{ mark_form.period }}</div>
+      <div class="col-5"><button class="btn btn-sm btn-outline-success w-100" data-confirm="¿Marcar como descontados todos los adelantos pagados de ese mes?">Marcar descontados</button></div>
+    </form>
+  </div></div></div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block row_actions %}{% if can_edit and row.obj.status == "pendiente_pago" %}<form method="post" action="{% url 'pagos:adelanto_pagado' row.obj.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-link px-1 text-success" title="Marcar pagado hoy"><i class="bi bi-cash"></i></button></form>{% endif %}{% if row.obj.attachment %}<a href="{{ row.obj.attachment.url }}" target="_blank" class="btn btn-sm btn-link px-1" title="Comprobante"><i class="bi bi-paperclip"></i></a>{% endif %}{% endblock %}

@@ -105,6 +105,44 @@ class Command(BaseCommand):
         for i, e in enumerate(employees[:-2]):
             SalaryAdjustmentPlan.objects.create(employee=e, **plans[i % len(plans)])
 
+        # Forma de pago, cuenta y franja de acreditación
+        windows = [(1, 5), (1, 10), (5, 10), (5, 15)]
+        for i, e in enumerate(employees):
+            e.payment_method = "efectivo" if i in (9, 10) else "transferencia"
+            if e.payment_method == "transferencia":
+                e.bank = ["Banco Nación", "Banco Galicia", "Banco Santander", "BBVA"][i % 4]
+                e.account_number = f"4{i:03d}-{1000 + i * 7}/{i % 9}"
+                e.cbu = f"{1100000000000000000000 + i * 1234567:022d}"
+            if i != 11:
+                e.pay_day_from, e.pay_day_to = windows[i % len(windows)]
+            e.health_insurance = e.health_insurance or "OSECAC"
+            e.save()
+
+        from apps.pagos.models import FinalSettlement, SalaryAdvance
+
+        month = today.replace(day=1)
+        SalaryAdvance.objects.create(employee=employees[6], date=today - datetime.timedelta(days=6), amount=Decimal("150000"),
+                                     reason="Gastos médicos", payment_method="transferencia",
+                                     paid_date=today - datetime.timedelta(days=5), discount_period=month)
+        SalaryAdvance.objects.create(employee=employees[9], date=today - datetime.timedelta(days=1), amount=Decimal("80000"),
+                                     reason="Mudanza", payment_method="efectivo", discount_period=month)
+        SalaryAdvance.objects.create(employee=employees[7], date=today - datetime.timedelta(days=40), amount=Decimal("100000"),
+                                     reason="Adelanto quincenal", payment_method="transferencia",
+                                     paid_date=today - datetime.timedelta(days=40),
+                                     discount_period=(month - datetime.timedelta(days=1)).replace(day=1), discounted=True)
+
+        # Un egreso con su liquidación final en curso
+        leaver = employees[10]
+        leaver.status, leaver.termination_date, leaver.termination_reason = "baja", today - datetime.timedelta(days=3), "renuncia"
+        leaver.save()
+        st = FinalSettlement.objects.create(employee=leaver, reason="renuncia", termination_date=leaver.termination_date,
+                                            status=FinalSettlement.Status.CONFIRMADA, payment_method="efectivo",
+                                            prepared_by="Estudio contable")
+        st.items.create(concept="Días trabajados del mes", kind="haber", amount=Decimal("650000"))
+        st.items.create(concept="SAC proporcional", kind="haber", amount=Decimal("320000"))
+        st.items.create(concept="Vacaciones no gozadas", kind="haber", amount=Decimal("410000"))
+        st.items.create(concept="Aportes jubilatorios", kind="descuento", amount=Decimal("150000"))
+
         generate_vacation_balances(today.year)
         vac = LeaveType.objects.get(code="vacaciones")
         sick = LeaveType.objects.get(code="enfermedad")

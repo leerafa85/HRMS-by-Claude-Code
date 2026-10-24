@@ -29,10 +29,35 @@
     </div></div>
     {% endif %}
 
-    {% if pending_requests %}
-    <div class="card mb-3"><div class="card-header d-flex">Solicitudes pendientes de aprobación<a href="{% url 'licencias:aprobaciones' %}" class="ms-auto small">Ver todas</a></div>
+    {% with sr=staff_requests %}{% if sr.pending or sr.confirmed %}
+    <div class="card mb-3"><div class="card-header d-flex align-items-center">
+      <ul class="nav nav-tabs card-header-tabs me-auto">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#reqPending" type="button">Sin confirmar <span class="badge text-bg-warning">{{ sr.pending|length }}</span></button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#reqDone" type="button">Confirmadas ({{ sr.days }} días) <span class="badge text-bg-secondary">{{ sr.confirmed|length }}</span></button></li>
+      </ul><a href="{% url 'licencias:aprobaciones' %}" class="small">Aprobaciones</a></div>
+      <div class="tab-content">
+        {% for key, rows in sr.items %}{% if key == "pending" or key == "confirmed" %}
+        <div class="tab-pane fade {% if key == 'pending' %}show active{% endif %}" id="{% if key == 'pending' %}reqPending{% else %}reqDone{% endif %}">
+          <ul class="list-group list-group-flush">
+          {% for r in rows %}<li class="list-group-item small d-flex align-items-center gap-2"><a href="{{ r.url }}" class="me-auto">{{ r.employee.full_name }} · {{ r.kind }}</a><span class="text-muted">{{ r.when }} · {{ r.extra }}</span><span class="badge text-bg-{{ r.badge }}">{{ r.status }}</span></li>
+          {% empty %}<li class="list-group-item small text-muted">{% if key == "pending" %}No hay solicitudes pendientes.{% else %}Sin solicitudes confirmadas en los últimos {{ sr.days }} días.{% endif %}</li>{% endfor %}
+          </ul></div>
+        {% endif %}{% endfor %}
+      </div></div>
+    {% endif %}{% endwith %}
+
+    <div class="card mb-3"><div class="card-header d-flex"><span><i class="bi bi-newspaper me-1"></i>Novedades de la semana</span><span class="ms-auto small text-muted">{{ news.start|date:"d/m" }} al {{ news.end|date:"d/m" }}</span></div>
+      <div class="card-body py-2">
+      {% for g in news.groups %}<div class="mb-2"><div class="small fw-semibold"><i class="bi bi-{{ g.icon }} me-1"></i>{% if g.url %}<a href="{{ g.url }}">{{ g.title }}</a>{% else %}{{ g.title }}{% endif %} <span class="badge text-bg-light">{{ g.entries|length }}</span></div>
+        <ul class="small mb-0 ps-4">{% for e in g.entries|slice:":6" %}<li>{{ e }}</li>{% endfor %}{% if g.entries|length > 6 %}<li class="text-muted">y {{ g.entries|length|add:"-6" }} más…</li>{% endif %}</ul></div>
+      {% empty %}<p class="small text-muted mb-0">Sin novedades esta semana.</p>{% endfor %}
+      </div></div>
+
+    {% if incomplete %}
+    <div class="card mb-3 border-warning"><div class="card-header d-flex"><span><i class="bi bi-clipboard-x me-1"></i>Datos de legajo incompletos</span><a href="{% url 'empleados:legajos_incompletos' %}" class="ms-auto small">Ver todos ({{ incomplete_count }})</a></div>
       <ul class="list-group list-group-flush">
-      {% for r in pending_requests %}<li class="list-group-item d-flex align-items-center"><a href="{% url 'licencias:solicitud_detail' r.pk %}" class="me-auto">{{ r.employee.full_name }}</a><span class="small text-muted me-2">{{ r.leave_type }} · {{ r.start_date|date:"d/m" }} al {{ r.end_date|date:"d/m" }} ({{ r.days|num:1 }} d)</span></li>{% endfor %}
+      {% for e, missing in incomplete %}<li class="list-group-item small"><a href="{% if user|can_edit:'empleados' %}{% url 'empleados:empleado_update' e.pk %}{% else %}{% url 'empleados:empleado_detail' e.pk %}{% endif %}">{{ e.full_name }}</a>
+        <div>{% for key, label, level in missing|slice:":3" %}<span class="badge {% if level == 'obligatorio' %}text-bg-danger{% else %}text-bg-light{% endif %} me-1">{{ label }}</span>{% endfor %}{% if missing|length > 3 %}<span class="text-muted">+{{ missing|length|add:"-3" }}</span>{% endif %}</div></li>{% endfor %}
       </ul></div>
     {% endif %}
 
@@ -64,6 +89,16 @@
   </div>
 
   <div class="col-lg-4">
+    {% if agenda %}
+    <div class="card mb-3 border-primary"><div class="card-header"><i class="bi bi-calendar-check me-1"></i>Fechas a tener en cuenta (30 días)</div>
+      <ul class="list-group list-group-flush">
+      {% for a in agenda %}<li class="list-group-item small d-flex gap-2"><i class="bi bi-{{ a.icon }} text-primary mt-1"></i>
+        <div class="me-auto">{% if a.url %}<a href="{{ a.url }}">{{ a.title }}</a>{% else %}{{ a.title }}{% endif %}{% if a.detail %}<div class="text-muted">{{ a.detail }}</div>{% endif %}</div>
+        <div class="text-end text-nowrap">{{ a.date|date:"d/m" }}{% if a.end %}–{{ a.end|date:"d/m" }}{% endif %}<br>
+          {% if a.overdue %}<span class="badge text-bg-danger">Vencido</span>{% elif a.ongoing %}<span class="badge text-bg-success">En curso</span>{% elif a.days == 0 %}<span class="badge text-bg-warning">Hoy</span>{% else %}<span class="text-muted">en {{ a.days }} d</span>{% endif %}</div></li>{% endfor %}
+      </ul></div>
+    {% endif %}
+
     <div class="card mb-3"><div class="card-header"><i class="bi bi-balloon me-1"></i>Celebraciones (próximos 30 días)</div>
       <ul class="list-group list-group-flush">
       {% for c in celebrations %}<li class="list-group-item small d-flex align-items-center">{% include "partials/avatar.html" with e=c.employee size="avatar-sm" %}<span class="ms-2 me-auto">{{ c.employee.full_name }}<br><span class="text-muted">{% if c.kind == "cumple" %}🎂 Cumpleaños{% else %}🎉 {{ c.years }} año{{ c.years|pluralize }} en la empresa{% endif %}</span></span><span>{% if c.date == today %}<strong>¡Hoy!</strong>{% else %}{{ c.date|date:"d/m" }}{% endif %}</span></li>{% empty %}<li class="list-group-item small text-muted">Sin celebraciones próximas.</li>{% endfor %}
@@ -74,20 +109,6 @@
       {% for h in holidays %}<li class="list-group-item small d-flex"><span class="me-auto">{{ h.name }}</span><span class="text-muted">{{ h.date|date:"D d/m" }}</span></li>{% empty %}<li class="list-group-item small text-muted">No hay feriados cargados.</li>{% endfor %}
       </ul></div>
 
-    {% if upcoming_adjustments %}
-    <div class="card mb-3"><div class="card-header d-flex"><span><i class="bi bi-graph-up-arrow me-1"></i>Ajustes salariales (15 días)</span><a href="{% url 'empleados:proximos_ajustes' %}" class="ms-auto small">Ver todos</a></div>
-      <ul class="list-group list-group-flush">
-      {% for r in upcoming_adjustments %}<li class="list-group-item small d-flex"><a href="{% url 'empleados:empleado_detail' r.employee.pk %}#salario" class="me-auto">{{ r.employee.full_name }}</a><span class="{% if r.days_left < 0 %}text-danger fw-semibold{% else %}text-muted{% endif %}">{% if r.days_left < 0 %}vencido {{ r.next_date|date:"d/m" }}{% else %}{{ r.next_date|date:"d/m" }}{% endif %}</span></li>{% endfor %}
-      </ul></div>
-    {% endif %}
-
-    {% if trial_ending or contracts_ending %}
-    <div class="card mb-3"><div class="card-header text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Vencimientos</div>
-      <ul class="list-group list-group-flush">
-      {% for e in trial_ending %}<li class="list-group-item small"><a href="{% url 'empleados:empleado_detail' e.pk %}">{{ e.full_name }}</a>: fin de período de prueba {{ e.trial_end_date|date:"d/m/Y" }}</li>{% endfor %}
-      {% for e in contracts_ending %}<li class="list-group-item small"><a href="{% url 'empleados:empleado_detail' e.pk %}">{{ e.full_name }}</a>: fin de contrato {{ e.contract_end_date|date:"d/m/Y" }}</li>{% endfor %}
-      </ul></div>
-    {% endif %}
 
     {% if expiring_docs %}
     <div class="card mb-3"><div class="card-header"><i class="bi bi-file-earmark-x me-1"></i>Documentos vencidos o por vencer</div>

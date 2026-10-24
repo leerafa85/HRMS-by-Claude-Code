@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Liquidación final{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 page-title me-auto">Liquidación final · <a href="{% url 'empleados:empleado_detail' s.employee_id %}">{{ s.employee.full_name }}</a></h1>
+  <a href="?formato=pdf" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+  <a href="?formato=imprimir" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Imprimir</a>
+  {% if can_edit %}<a href="{% url 'pagos:liquidacion_update' s.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-pencil me-1"></i>Editar conceptos</a>{% endif %}
+  {% if can_admin %}<a href="{% url 'pagos:liquidacion_delete' s.pk %}" class="btn btn-sm btn-outline-danger">Eliminar</a>{% endif %}
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Estado</div><div class="fw-semibold">{{ s.get_status_display }}</div>{% if s.is_overdue %}<span class="badge text-bg-danger">Pago vencido</span>{% endif %}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Fecha límite de pago</div><div class="fw-semibold">{{ s.due_date|date:"d/m/Y"|default:"—" }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="small text-muted">Total a pagar</div><div class="fs-5 fw-bold">{{ s.total_to_pay|ars }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100 {% if s.balance > 0 %}border-warning{% else %}border-success{% endif %}"><div class="card-body"><div class="small text-muted">Saldo pendiente</div><div class="fs-5 fw-bold">{{ s.balance|ars }}</div><div class="small text-muted">Pagado {{ s.total_paid|ars }}</div></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">{% include "partials/doc.html" %}</div>
+  <div class="col-lg-4">
+    {% if can_edit %}
+    <div class="card mb-3"><div class="card-header">Registrar pago</div><div class="card-body">
+      <form method="post" action="{% url 'pagos:liquidacion_pago' s.pk %}">{% csrf_token %}<div class="row">{% for f in payment_form %}{% field f "col-12" %}{% endfor %}</div><button class="btn btn-sm btn-success">Registrar pago</button></form>
+    </div></div>
+    <div class="card mb-3"><div class="card-header">Seguimiento</div><div class="card-body">
+      <form method="post" action="{% url 'pagos:liquidacion_estado' s.pk %}">{% csrf_token %}
+        <label class="form-label">Estado</label><select name="status" class="form-select form-select-sm mb-2">{% for v, l in statuses %}<option value="{{ v }}" {% if v == s.status %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <label class="form-label">Nota de seguimiento</label><textarea name="note" rows="2" class="form-control form-control-sm mb-2" placeholder="Ej.: se envió el recibo para firma"></textarea>
+        <button class="btn btn-sm btn-outline-primary">Guardar</button></form>
+    </div></div>
+    {% endif %}
+    {% if s.payments.exists and can_admin %}<div class="card mb-3"><div class="card-header">Pagos registrados</div><ul class="list-group list-group-flush small">{% for p in s.payments.all %}<li class="list-group-item d-flex align-items-center"><span class="me-auto">{{ p.date|date:"d/m/Y" }} · {{ p.amount|ars }} · {{ p.get_method_display }}</span><form method="post" action="{% url 'pagos:liquidacion_pago_delete' s.pk p.pk %}">{% csrf_token %}<button class="btn btn-sm btn-link text-danger" data-confirm="¿Eliminar este pago?"><i class="bi bi-trash"></i></button></form></li>{% endfor %}</ul></div>{% endif %}
+    <div class="card"><div class="card-body small">
+      <div><strong>Preparada por:</strong> {{ s.prepared_by|default:"—" }}</div>
+      <div><strong>Notificación:</strong> {{ s.notice_date|date:"d/m/Y"|default:"—" }}</div>
+      <div><strong>Documentación:</strong> {% if s.attachment %}<a href="{{ s.attachment.url }}" target="_blank"><i class="bi bi-paperclip"></i> Ver</a>{% else %}—{% endif %}</div>
+      {% if s.notes %}<div class="mt-2"><strong>Observaciones:</strong><br>{{ s.notes|linebreaksbr }}</div>{% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

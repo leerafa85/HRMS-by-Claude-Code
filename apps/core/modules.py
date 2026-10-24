@@ -7,6 +7,7 @@ class Module(models.TextChoices):
     EMPLEADOS = "empleados", "Legajos de personal"
     DOCUMENTOS = "documentos", "Documentos de legajo"
     SALARIOS = "salarios", "Salarios y ajustes"
+    PAGOS = "pagos", "Adelantos de sueldo y liquidaciones finales"
     LICENCIAS = "licencias", "Vacaciones y licencias"
     ASISTENCIA = "asistencia", "Asistencia (inasistencias, tardanzas, horas extras)"
     FERIADOS = "feriados", "Feriados"
@@ -32,6 +33,7 @@ DEFAULT_ROLES = {
         Module.EMPLEADOS: Level.EDITAR,
         Module.DOCUMENTOS: Level.EDITAR,
         Module.SALARIOS: Level.VER,
+        Module.PAGOS: Level.EDITAR,
         Module.LICENCIAS: Level.ADMINISTRAR,
         Module.ASISTENCIA: Level.ADMINISTRAR,
         Module.FERIADOS: Level.EDITAR,
@@ -58,6 +60,7 @@ DEFAULT_ROLES = {
     "Liquidación de sueldos": {
         Module.EMPLEADOS: Level.VER,
         Module.SALARIOS: Level.ADMINISTRAR,
+        Module.PAGOS: Level.ADMINISTRAR,
         Module.LICENCIAS: Level.VER,
         Module.ASISTENCIA: Level.VER,
         Module.FERIADOS: Level.VER,

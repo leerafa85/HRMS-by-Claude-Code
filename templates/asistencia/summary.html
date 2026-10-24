@@ -14,14 +14,15 @@
   </form>
 </div>
 <div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
-<thead><tr><th>Legajo</th><th>Empleado</th><th>Área</th><th class="text-center">Inasist.</th><th class="text-center">Injustif.</th><th class="text-center">Tardanzas</th><th class="text-center">Min. tarde</th><th class="text-center">HE 50 %</th><th class="text-center">HE 100 %</th><th class="text-center">HE banco</th><th>Licencias (días)</th></tr></thead>
+<thead><tr><th>Legajo</th><th>Empleado</th><th>Área</th><th class="text-center">Inasist.</th><th class="text-center">Injustif.</th><th class="text-center">Tardanzas</th><th class="text-center">Min. tarde</th><th class="text-center">HE 50 %</th><th class="text-center">HE 100 %</th><th class="text-center">HE banco</th><th>Licencias (días)</th><th class="text-end">Adelantos a descontar</th></tr></thead>
 <tbody>{% for r in rows %}<tr>
 <td>{{ r.employee.file_number }}</td><td>{{ r.employee }}</td><td class="small">{{ r.employee.department|default:"" }}</td>
 <td class="text-center">{{ r.absences|default:"" }}</td><td class="text-center {% if r.absences_unjustified %}text-danger fw-semibold{% endif %}">{{ r.absences_unjustified|default:"" }}</td>
 <td class="text-center">{{ r.tardies|default:"" }}</td><td class="text-center">{{ r.tardy_minutes|default:"" }}</td>
 <td class="text-center">{% if r.h50 %}{{ r.h50|num:2 }}{% endif %}</td><td class="text-center">{% if r.h100 %}{{ r.h100|num:2 }}{% endif %}</td><td class="text-center">{% if r.banco %}{{ r.banco|num:2 }}{% endif %}</td>
 <td class="small">{% for k, v in r.leaves.items %}{{ k }}: {{ v }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
-</tr>{% empty %}<tr><td colspan="11" class="text-center text-muted py-3">Sin empleados.</td></tr>{% endfor %}</tbody>
+<td class="text-end text-nowrap">{% if r.advances %}{{ r.advances|ars }}{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="12" class="text-center text-muted py-3">Sin empleados.</td></tr>{% endfor %}</tbody>
 </table></div></div>
 <p class="small text-muted mt-2">Solo se computan horas extras aprobadas y licencias aprobadas (días calendario dentro del mes).</p>
 {% endblock %}

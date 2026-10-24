@@ -33,6 +33,7 @@ urlpatterns = [
     path("mi-equipo/", views.my_team, name="mi_equipo"),
     path("mi-equipo/<int:pk>/", views.team_member, name="mi_equipo_detalle"),
     path("directorio/", views.directory, name="directorio"),
+    path("legajos-incompletos/", views.incomplete_files, name="legajos_incompletos"),
     path("organigrama/", views.org_chart, name="organigrama"),
     *crud("documento", "documentos", views.DocumentList, views.DocumentCreate, views.DocumentUpdate,
           views.DocumentDelete),

@@ -4,6 +4,7 @@ import os
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from apps.core.uploads import UploadTo
@@ -45,6 +46,12 @@ PROVINCIAS = [
 upload_photo = UploadTo("empleados/fotos")
 upload_document = UploadTo("empleados/documentos")
 upload_salary = UploadTo("empleados/salarios")
+
+
+class PaymentMethod(models.TextChoices):
+    EFECTIVO = "efectivo", "Efectivo"
+    TRANSFERENCIA = "transferencia", "Transferencia bancaria"
+    OTROS = "otros", "Otros"
 
 
 class Department(models.Model):
@@ -204,9 +211,21 @@ class Employee(models.Model):
     health_plan = models.CharField("prepaga / plan", max_length=100, blank=True)
 
     # Pago
+    payment_method = models.CharField(
+        "forma de pago del sueldo", max_length=15, choices=PaymentMethod.choices, blank=True
+    )
     bank = models.CharField("banco", max_length=80, blank=True)
+    account_number = models.CharField("n.º de cuenta", max_length=40, blank=True)
     cbu = models.CharField("CBU / CVU", max_length=22, blank=True, validators=[validate_cbu])
     bank_alias = models.CharField("alias", max_length=50, blank=True)
+    pay_day_from = models.PositiveSmallIntegerField(
+        "acreditación del sueldo: desde el día", null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(31)],
+        help_text="Franja de días del mes en que se acredita el sueldo. Ej.: del 1 al 5.",
+    )
+    pay_day_to = models.PositiveSmallIntegerField(
+        "hasta el día", null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(31)]
+    )
 
     # Baja
     termination_date = models.DateField("fecha de egreso", null=True, blank=True)
@@ -234,6 +253,42 @@ class Employee(models.Model):
 
     def __str__(self):
         return f"{self.last_name}, {self.first_name}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        errors = {}
+        if self.payment_method == PaymentMethod.TRANSFERENCIA:
+            if not self.bank:
+                errors["bank"] = "Para pagar por transferencia indicá el banco."
+            if not self.cbu:
+                errors["cbu"] = "Para pagar por transferencia indicá el CBU/CVU."
+        if (self.pay_day_from is None) != (self.pay_day_to is None):
+            errors["pay_day_to"] = "Completá los dos días de la franja de acreditación (desde y hasta)."
+        elif self.pay_day_from and self.pay_day_to and self.pay_day_from > self.pay_day_to:
+            errors["pay_day_to"] = "El día «hasta» no puede ser anterior al día «desde»."
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def pay_window_display(self):
+        if not self.pay_day_from:
+            return ""
+        return f"del {self.pay_day_from} al {self.pay_day_to}"
+
+    def next_pay_window(self, today=None):
+        """Próxima franja de acreditación (inicio, fin) a partir de hoy, o None si no está cargada."""
+        if not self.pay_day_from:
+            return None
+        today = today or datetime.date.today()
+        for offset in (0, 1):
+            first = add_months(today.replace(day=1), offset)
+            last_day = calendar.monthrange(first.year, first.month)[1]
+            start = first.replace(day=min(self.pay_day_from, last_day))
+            end = first.replace(day=min(self.pay_day_to, last_day))
+            if end >= today:
+                return start, end
+        return None
 
     @property
     def full_name(self):

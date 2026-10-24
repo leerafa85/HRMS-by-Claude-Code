@@ -172,9 +172,16 @@ def employee_context(employee, user, self_view=False):
         "admin": user.can(Module.EMPLEADOS, Level.ADMINISTRAR),
         "salary_edit": user.can(Module.SALARIOS, Level.EDITAR),
         "onboarding": user.can(Module.ONBOARDING),
+        "payments": user.can(Module.PAGOS) or is_self,
+        "payments_edit": user.can(Module.PAGOS, Level.EDITAR),
         "sensitive": user.can(Module.EMPLEADOS) or is_self,
     }
     ctx = {"employee": employee, "perm": can, "is_self": is_self, "self_view": self_view}
+    if can["edit"] and not self_view:
+        from .completeness import missing_fields
+
+        found = missing_fields([employee])
+        ctx["missing"] = found[0][1] if found else []
     if can["documents"]:
         docs = employee.documents.all()
         if not user.can(Module.DOCUMENTOS):
@@ -192,6 +199,12 @@ def employee_context(employee, user, self_view=False):
         ctx["absences"] = employee.absences.filter(date__gte=year_start)
         ctx["tardies"] = employee.tardies.filter(date__gte=year_start)
         ctx["overtimes"] = employee.overtimes.filter(date__gte=year_start)
+    if can["payments"]:
+        from apps.pagos.models import SalaryAdvance
+
+        ctx["advances"] = employee.advances.all()[:24]
+        ctx["advances_pending"] = SalaryAdvance.total(SalaryAdvance.pending_discount(employee=employee))
+        ctx["settlements"] = employee.settlements.prefetch_related("items", "payments") if user.can(Module.PAGOS) else []
     if can["onboarding"]:
         ctx["checklists"] = employee.checklists.prefetch_related("tasks")
     return ctx
@@ -866,3 +879,20 @@ def ipc_import(request):
     except Exception as e:  # red, formato inesperado, etc.
         messages.error(request, f"No se pudo importar el IPC automáticamente ({e}). Cargalo a mano con el dato del INDEC.")
     return redirect("empleados:ipc_list")
+
+
+@login_required
+def incomplete_files(request):
+    """Legajos con datos clave sin completar (reglas en empleados/completeness.py)."""
+    from .completeness import OBLIGATORIO, RULES, missing_fields
+
+    if not request.user.can(Module.EMPLEADOS):
+        raise PermissionDenied
+    level = request.GET.get("nivel", "")
+    rows = missing_fields(Employee.objects.exclude(status=Employee.Status.DESVINCULADO).select_related("user"))
+    if level:
+        rows = [(e, [m for m in missing if m[2] == level]) for e, missing in rows]
+        rows = [r for r in rows if r[1]]
+    return render(request, "empleados/incomplete.html", {
+        "rows": rows, "level": level, "rules": RULES, "OBLIGATORIO": OBLIGATORIO,
+    })

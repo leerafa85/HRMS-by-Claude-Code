@@ -26,6 +26,9 @@
   {% endif %}
 </div></div>
 
+{% if missing %}<div class="alert alert-warning small py-2 no-print"><i class="bi bi-clipboard-x me-1"></i><strong>Datos por completar:</strong>
+  {% for key, label, level in missing %}<span class="badge {% if level == 'obligatorio' %}text-bg-danger{% else %}text-bg-light{% endif %} me-1">{{ label }}</span>{% endfor %}
+  <a href="{% url 'empleados:empleado_update' employee.pk %}" class="ms-1">Completar</a></div>{% endif %}
 <ul class="nav nav-tabs mb-3 no-print" role="tablist">
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#datos">Datos</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#familia">Familia y contactos</button></li>
@@ -33,6 +36,7 @@
   {% if perm.salary %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#salario">Salario</button></li>{% endif %}
   {% if perm.leave %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#licencias">Vacaciones y licencias</button></li>{% endif %}
   {% if perm.attendance %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#asistencia">Asistencia</button></li>{% endif %}
+  {% if perm.payments %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pagos">Adelantos y liquidación</button></li>{% endif %}
   {% if perm.onboarding %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#onboarding">Onboarding</button></li>{% endif %}
 </ul>
 
@@ -65,7 +69,9 @@
       <div class="col-6"><dt>Convenio / categoría</dt><dd>{{ employee.union_agreement|default:"Fuera de convenio" }}{% if employee.category %} · {{ employee.category }}{% endif %}</dd></div>
       <div class="col-6"><dt>Sindicato</dt><dd>{{ employee.union|default:"—" }}</dd></div>
       <div class="col-6"><dt>Obra social</dt><dd>{{ employee.health_insurance|default:"—" }}{% if employee.health_plan %} · {{ employee.health_plan }}{% endif %}</dd></div>
-      {% if perm.sensitive %}<div class="col-12"><dt>Cuenta sueldo</dt><dd>{{ employee.bank|default:"—" }}{% if employee.cbu %} · CBU {{ employee.cbu }}{% endif %}{% if employee.bank_alias %} · Alias {{ employee.bank_alias }}{% endif %}</dd></div>{% endif %}
+      <div class="col-6"><dt>Forma de pago</dt><dd>{{ employee.get_payment_method_display|default:"—" }}</dd></div>
+      <div class="col-6"><dt>Acreditación del sueldo</dt><dd>{% if employee.pay_day_from %}Días {{ employee.pay_day_from }} al {{ employee.pay_day_to }} de cada mes{% else %}—{% endif %}</dd></div>
+      {% if perm.sensitive %}<div class="col-12"><dt>Cuenta sueldo</dt><dd>{{ employee.bank|default:"—" }}{% if employee.account_number %} · Cuenta {{ employee.account_number }}{% endif %}{% if employee.cbu %} · CBU/CVU {{ employee.cbu }}{% endif %}{% if employee.bank_alias %} · Alias {{ employee.bank_alias }}{% endif %}</dd></div>{% endif %}
       {% if employee.user %}<div class="col-12"><dt>Usuario del sistema</dt><dd>{{ employee.user.username }}</dd></div>{% endif %}
       {% if employee.termination_date %}<div class="col-12"><dt>Egreso</dt><dd class="text-danger">{{ employee.termination_date|date:"d/m/Y" }} · {{ employee.get_termination_reason_display }}{% if employee.termination_notes %}<br><span class="small">{{ employee.termination_notes }}</span>{% endif %}</dd></div>{% endif %}
     </dl></div></div></div>
@@ -170,6 +176,26 @@
     <div class="col-lg-4"><div class="card"><div class="card-header">Llegadas tarde {% now "Y" %} ({{ tardies|length }})</div><ul class="list-group list-group-flush small">{% for t in tardies %}<li class="list-group-item">{{ t.date|date:"d/m/Y" }} · {{ t.arrival_time|time:"H:i" }} ({{ t.minutes_late }} min){% if t.justified %} <span class="badge text-bg-success">Just.</span>{% endif %}</li>{% empty %}<li class="list-group-item text-muted">Sin llegadas tarde.</li>{% endfor %}</ul></div></div>
     <div class="col-lg-4"><div class="card"><div class="card-header">Horas extras {% now "Y" %}</div><ul class="list-group list-group-flush small">{% for o in overtimes %}<li class="list-group-item">{{ o.date|date:"d/m/Y" }} · {{ o.hours|num:2 }} h al {{ o.rate }} % · {{ o.get_status_display }}</li>{% empty %}<li class="list-group-item text-muted">Sin horas extras.</li>{% endfor %}</ul></div></div>
   </div>
+</div>
+{% endif %}
+
+{% if perm.payments %}
+<div class="tab-pane fade" id="pagos">
+  <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+    <div class="me-auto small">Adelantos pagados pendientes de descuento: <strong>{{ advances_pending|ars }}</strong></div>
+    {% if perm.payments_edit and not self_view %}
+      <a href="{% url 'pagos:adelanto_create' %}?empleado={{ employee.pk }}&next={{ request.path|urlencode }}%23pagos" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Registrar adelanto</a>
+      {% if employee.status == "baja" or employee.termination_date %}<a href="{% url 'pagos:liquidacion_create' %}?empleado={{ employee.pk }}" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-ruled me-1"></i>Crear liquidación final</a>{% endif %}
+    {% endif %}
+    {% if user|can_view:"pagos" %}<a href="{% url 'pagos:adelanto_informe' %}?empleado={{ employee.pk }}" class="btn btn-sm btn-outline-secondary">Informe de adelantos</a>{% endif %}
+  </div>
+  <div class="card mb-3"><div class="card-header">Adelantos de sueldo</div><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th>Fecha</th><th class="text-end">Importe</th><th>Motivo</th><th>Forma de pago</th><th>Pagado el</th><th>Se descuenta de</th><th>Estado</th></tr></thead><tbody>
+    {% for a in advances %}<tr><td>{{ a.date|date:"d/m/Y" }}</td><td class="text-end text-nowrap">{{ a.amount|ars }}</td><td class="small">{{ a.reason }}</td><td>{{ a.get_payment_method_display }}</td><td>{{ a.paid_date|date:"d/m/Y"|default:"—" }}</td><td>{{ a.discount_period|date:"m/Y" }}</td><td><span class="badge text-bg-{% if a.status == 'descontado' %}success{% elif a.status == 'a_descontar' %}info{% elif a.status == 'anulado' %}secondary{% else %}warning{% endif %}">{{ a.status_label }}</span></td></tr>{% empty %}<tr><td colspan="7" class="small text-muted">Sin adelantos.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+  {% if settlements %}<div class="card"><div class="card-header">Liquidación final</div><ul class="list-group list-group-flush">
+    {% for st in settlements %}<li class="list-group-item d-flex align-items-center"><a href="{% url 'pagos:liquidacion_detail' st.pk %}" class="me-auto">{{ st.get_reason_display }} · egreso {{ st.termination_date|date:"d/m/Y" }}</a><span class="small me-2">Total {{ st.total_to_pay|ars }} · saldo {{ st.balance|ars }}</span><span class="badge text-bg-secondary">{{ st.get_status_display }}</span></li>{% endfor %}
+  </ul></div>{% endif %}
 </div>
 {% endif %}
 

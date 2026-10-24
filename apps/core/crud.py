@@ -78,12 +78,13 @@ def format_cell(value, kind=None):
 
 
 class Column:
-    def __init__(self, label, attr, kind=None, link=False, badge=None):
+    def __init__(self, label, attr, kind=None, link=False, badge=None, badge_key=None):
         self.label = label
         self.attr = attr
         self.kind = kind
         self.link = link
         self.badge = badge  # dict valor -> clase de bootstrap
+        self.badge_key = badge_key  # atributo con el valor que define el color (si difiere de attr)
 
     def render(self, obj):
         raw = resolve_attr(obj, self.attr) if isinstance(self.attr, str) else self.attr(obj)
@@ -92,8 +93,8 @@ class Column:
     def badge_class(self, obj):
         if not self.badge:
             return None
-        key = self.attr.split(".")[-1]
-        raw = getattr(obj, key, None) if isinstance(self.attr, str) else None
+        key = self.badge_key or (self.attr.split(".")[-1] if isinstance(self.attr, str) else None)
+        raw = getattr(obj, key, None) if key else None
         return self.badge.get(raw, "secondary")
 
 
@@ -162,7 +163,7 @@ class HRListView(ModuleRequiredMixin, UrlNamesMixin, ListView):
             qs = qs.filter(cond)
         for param, field, _label, _opts in self.get_filters():
             val = self.request.GET.get(param)
-            if val not in (None, ""):
+            if field and val not in (None, ""):  # field=None: filtro que resuelve la vista
                 qs = qs.filter(**{field: val})
         return qs
 
@@ -176,7 +177,8 @@ class HRListView(ModuleRequiredMixin, UrlNamesMixin, ListView):
         for obj in ctx["object_list"]:
             cells = []
             for col in self.columns:
-                cells.append({"value": col.render(obj), "badge": col.badge_class(obj), "link": col.link})
+                cells.append({"value": col.render(obj), "badge": col.badge_class(obj), "link": col.link,
+                              "nowrap": col.kind == "money"})
             rows.append(
                 {
                     "obj": obj,

@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.crud import Column, HRCreateView, HRDeleteView, HRListView, HRUpdateView
 from apps.core.dates import MESES, MONTH_CHOICES
-from apps.core.formatting import format_number
+from apps.core.formatting import format_ars, format_number
 from apps.core.models import AuditLog
 from apps.core.modules import Level, Module
 from apps.empleados.models import Department, Employee
@@ -236,6 +236,11 @@ def monthly_summary(year, month, employees):
         d = leaves.setdefault(lr.employee_id, {})
         key = lr.leave_type.name
         d[key] = d.get(key, 0) + days
+    from apps.pagos.models import SalaryAdvance
+
+    advances = {}
+    for adv in SalaryAdvance.objects.filter(discount_period=first, cancelled=False, employee__in=employees):
+        advances[adv.employee_id] = advances.get(adv.employee_id, Decimal(0)) + adv.amount
     rows = []
     for e in employees:
         a = absences.get(e.pk, {})
@@ -249,6 +254,7 @@ def monthly_summary(year, month, employees):
             "tardy_minutes": t.get("mins", 0) or 0,
             "h50": o["h50"], "h100": o["h100"], "banco": o["banco"],
             "leaves": leaves.get(e.pk, {}),
+            "advances": advances.get(e.pk, Decimal(0)),
         })
     return rows
 
@@ -269,18 +275,20 @@ def summary(request):
         employees = employees.filter(department_id=request.GET["area"])
     rows = monthly_summary(year, month, employees)
     headers = ["Legajo", "Empleado", "Área", "Inasistencias", "Injustificadas", "Llegadas tarde", "Minutos tarde",
-               "HE 50 %", "HE 100 %", "HE a banco", "Licencias (días)"]
+               "HE 50 %", "HE 100 %", "HE a banco", "Licencias (días)", "Adelantos a descontar"]
     data = [[r["employee"].file_number, str(r["employee"]), str(r["employee"].department or ""), r["absences"],
              r["absences_unjustified"], r["tardies"], r["tardy_minutes"], r["h50"], r["h100"], r["banco"],
-             "; ".join(f"{k}: {v}" for k, v in r["leaves"].items())] for r in rows]
+             "; ".join(f"{k}: {v}" for k, v in r["leaves"].items()), r["advances"] or None] for r in rows]
     if request.GET.get("exportar"):
         return excel_response(f"novedades_{year}_{month:02d}", "Novedades", headers, data)
     if wants_document(request):
         area = Department.objects.filter(pk=request.GET.get("area") or None).first()
         totals = ["Total", f"{len(rows)} empleados", ""] + [
             sum(r[k] for r in rows) for k in ("absences", "absences_unjustified", "tardies", "tardy_minutes")
-        ] + [f"{format_number(sum(r[k] for r in rows))}" for k in ("h50", "h100", "banco")] + [""]
-        printable_rows = [row[:7] + [format_number(v) if v else "" for v in row[7:10]] + row[10:] for row in data]
+        ] + [f"{format_number(sum(r[k] for r in rows))}" for k in ("h50", "h100", "banco")] + [
+            "", format_ars(sum((r["advances"] for r in rows), Decimal(0)))]
+        printable_rows = [row[:7] + [format_number(v) if v else "" for v in row[7:10]] + [row[10],
+                          format_ars(row[11]) if row[11] else ""] for row in data]
         doc = Document(
             title=f"Novedades de asistencia · {MESES[month - 1]} {year}",
             subtitle=[f"Área: {area or 'todas'}", "Solo horas extras y licencias aprobadas."],

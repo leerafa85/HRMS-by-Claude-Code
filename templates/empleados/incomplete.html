@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Legajos incompletos{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 page-title me-auto">Legajos con datos incompletos</h1>
+  <div class="btn-group btn-group-sm">
+    <a href="?" class="btn btn-outline-secondary {% if not level %}active{% endif %}">Todos</a>
+    <a href="?nivel=obligatorio" class="btn btn-outline-danger {% if level == 'obligatorio' %}active{% endif %}">Obligatorios</a>
+    <a href="?nivel=recomendado" class="btn btn-outline-secondary {% if level == 'recomendado' %}active{% endif %}">Recomendados</a>
+  </div>
+</div>
+<div class="card mb-3"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+<thead><tr><th>Empleado</th><th>Datos faltantes</th><th></th></tr></thead><tbody>
+{% for e, missing in rows %}<tr><td class="text-nowrap"><a href="{% url 'empleados:empleado_detail' e.pk %}">{{ e }}</a><div class="small text-muted">Legajo {{ e.file_number }}</div></td>
+  <td>{% for key, label, lvl in missing %}<span class="badge {% if lvl == OBLIGATORIO %}text-bg-danger{% else %}text-bg-light border{% endif %} me-1 mb-1">{{ label }}</span>{% endfor %}</td>
+  <td class="text-end">{% if user|can_edit:"empleados" %}<a href="{% url 'empleados:empleado_update' e.pk %}" class="btn btn-sm btn-outline-primary">Completar</a>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="3" class="text-center text-muted py-4">¡Todos los legajos tienen los datos clave completos! 🎉</td></tr>{% endfor %}
+</tbody></table></div></div>
+<div class="card"><div class="card-body small">
+  <div class="fw-semibold mb-1">Datos que se controlan</div>
+  <div class="row">{% for key, label, lvl, check in rules %}<div class="col-md-4"><span class="badge {% if lvl == OBLIGATORIO %}text-bg-danger{% else %}text-bg-light border{% endif %}">{{ lvl|capfirst }}</span> {{ label }}</div>{% endfor %}</div>
+  <div class="text-muted mt-2">Algunos datos (contacto de emergencia, salario, documentos, esquema de ajuste) se cargan desde las pestañas del legajo, no desde «Editar».</div>
+</div></div>
+{% endblock %}

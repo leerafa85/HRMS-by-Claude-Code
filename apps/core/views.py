@@ -15,6 +15,7 @@ from django.shortcuts import redirect, render
 from django.utils._os import safe_join
 from django.views.generic import ListView
 
+from . import home
 from .crud import (
     Column,
     HRCreateView,
@@ -58,30 +59,21 @@ def dashboard(request):
             "exits_month": Employee.objects.filter(termination_date__gte=first_of_month, termination_date__lte=today).count(),
             "trial": active.filter(status=Employee.Status.PRUEBA).count(),
         }
-        ctx["trial_ending"] = active.filter(
-            trial_end_date__range=(today, today + datetime.timedelta(days=30))
-        ).order_by("trial_end_date")
-        ctx["contracts_ending"] = active.filter(
-            contract_end_date__range=(today, today + datetime.timedelta(days=45))
-        ).order_by("contract_end_date")
+        from apps.empleados.completeness import OBLIGATORIO, missing_fields
 
-    if user.can(Module.SALARIOS):
-        from apps.empleados import ajustes
+        incomplete = missing_fields(active.select_related("user"))
+        ctx["incomplete"] = incomplete[:6]
+        ctx["incomplete_count"] = len(incomplete)
+        ctx["incomplete_required"] = sum(1 for _e, m in incomplete if any(x[2] == OBLIGATORIO for x in m))
 
-        ctx["upcoming_adjustments"] = [
-            r for r in ajustes.upcoming() if r.days_left is not None and r.days_left <= 15
-        ][:8]
+    ctx["agenda"] = home.agenda(user, today)[:14]
+    ctx["news"] = home.weekly_news(user, today)
+    ctx["staff_requests"] = home.staff_requests(user, employee)
 
     if user.can(Module.DOCUMENTOS):
         ctx["expiring_docs"] = EmployeeDocument.objects.filter(
             expiry_date__lte=today + datetime.timedelta(days=30), employee__in=active
         ).select_related("employee").order_by("expiry_date")[:8]
-
-    # Aprobaciones pendientes (RRHH o jefe directo)
-    pending = LeaveRequest.objects.filter(status=LeaveRequest.Status.PENDIENTE).select_related("employee", "leave_type")
-    if not user.can(Module.LICENCIAS, Level.ADMINISTRAR):
-        pending = pending.filter(employee__manager=employee) if employee else pending.none()
-    ctx["pending_requests"] = pending[:8]
 
     # Celebraciones (visibles para todos, como en Freshteam)
     upcoming = []
@@ -310,6 +302,8 @@ PROTECTED_FILES = [
     ("asistencia.Absence", "attachment", Module.ASISTENCIA, "employee"),
     ("asistencia.Tardiness", "attachment", Module.ASISTENCIA, "employee"),
     ("asistencia.Overtime", "attachment", Module.ASISTENCIA, "employee"),
+    ("pagos.SalaryAdvance", "attachment", Module.PAGOS, "employee"),
+    ("pagos.FinalSettlement", "attachment", Module.PAGOS, "employee"),
     ("reclutamiento.Candidate", "resume", Module.RECLUTAMIENTO, None),
     ("core.CompanySettings", "logo", None, None),
 ]

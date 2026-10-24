@@ -35,7 +35,7 @@ class EmployeeForm(BaseModelForm):
                              "contract_end_date", "pay_type", "department", "position", "location", "manager",
                              "weekly_hours", "start_time", "end_time", "works_saturday"]),
         ("Encuadre convencional y obra social", ["union_agreement", "category", "union", "health_insurance", "health_plan"]),
-        ("Datos bancarios", ["bank", "cbu", "bank_alias"]),
+        ("Pago del sueldo", ["payment_method", "pay_day_from", "pay_day_to", "bank", "account_number", "cbu", "bank_alias"]),
         ("Otros", ["notes", "initial_salary"]),
     ]
 

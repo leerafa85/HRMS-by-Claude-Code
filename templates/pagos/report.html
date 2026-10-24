@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load hrms %}
+{% block title %}Informe de adelantos{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 page-title me-auto">Informe de adelantos de sueldo</h1>
+  <a href="?{{ request.GET.urlencode }}&formato=pdf" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+  <a href="?{{ request.GET.urlencode }}&formato=imprimir" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Imprimir</a>
+  <a href="{% url 'pagos:adelanto_list' %}" class="btn btn-sm btn-link">Ver adelantos</a>
+</div>
+<form class="card card-body py-2 mb-3" method="get"><div class="row g-2 align-items-end">
+  <div class="col-md-4"><label class="form-label">Empleado</label><select name="empleado" class="form-select form-select-sm"><option value="">Todos (informe general)</option>{% for e in employees %}<option value="{{ e.pk }}" {% if employee.pk == e.pk %}selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><label class="form-label">Área</label><select name="area" class="form-select form-select-sm"><option value="">Todas</option>{% for d in departments %}<option value="{{ d.pk }}" {% if area == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
+  <div class="col-md-2 col-6"><label class="form-label">Desde</label><input type="date" name="desde" value="{{ start|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+  <div class="col-md-2 col-6"><label class="form-label">Hasta</label><input type="date" name="hasta" value="{{ end|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+  <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Ver informe</button></div>
+</div></form>
+{% include "partials/doc.html" %}
+{% endblock %}
