@@ -22,24 +22,24 @@
 <form method="post">{% csrf_token %}
 <div class="card"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
 <thead><tr>{% if can_apply %}<th><input type="checkbox" class="form-check-input" onclick="document.querySelectorAll('.js-sel').forEach(c => c.checked = this.checked)"></th>{% endif %}
-<th>Empleado</th><th>Esquema</th><th>Último ajuste</th><th class="text-end">Salario actual</th><th>Próximo ajuste</th><th class="text-center">Días restantes</th><th class="text-end">Estimado</th><th></th></tr></thead>
+<th>Empleado</th><th>Esquema</th><th>Último ajuste</th><th class="text-end">Salario actual</th><th>Próximo ajuste<br><span class="fw-normal">(mes trabajado)</span></th><th class="text-center">Días restantes</th><th class="text-end">Estimado</th><th></th></tr></thead>
 <tbody>
 {% for r in rows %}{% with info=status_map|get_item:r.status %}
 <tr>
   {% if can_apply %}<td>{% if r.can_apply %}<input type="checkbox" class="form-check-input js-sel" name="empleado" value="{{ r.employee.pk }}">{% endif %}</td>{% endif %}
   <td><a href="{% url 'empleados:empleado_detail' r.employee.pk %}#salario">{{ r.employee }}</a><div class="small text-muted">{{ r.employee.department|default:"" }}</div></td>
   <td class="small">{% if r.plan %}{{ r.plan.summary }}{% else %}<span class="text-muted">Sin esquema</span>{% endif %}</td>
-  <td class="small">{% if r.last %}{{ r.last.effective_date|date:"d/m/Y" }}<div class="text-muted">{{ r.last.get_reason_display }}</div>{% else %}—{% endif %}</td>
+  <td class="small">{% if r.last %}{{ r.last.effective_date|date:"d/m/Y" }}<div class="text-muted">Mes trabajado {{ r.last.worked_month }}</div><div class="text-muted">{{ r.last.get_reason_display }}</div>{% else %}—{% endif %}</td>
   <td class="text-end text-nowrap">{{ r.base_salary|ars }}{% if r.extras %}<div class="small text-muted">Total con adicionales {{ r.gross_now|ars }}</div>{% endif %}</td>
-  <td class="text-nowrap">{{ r.next_date|date:"d/m/Y"|default:"—" }}</td>
+  <td class="text-nowrap">{{ r.next_date|date:"d/m/Y"|default:"—" }}{% if r.next_date %}<div class="small text-muted">Trabajado: {{ r.next_date|mes_trabajado }}<br>Se abona: {{ r.next_date|mes_cobro }}</div>{% endif %}</td>
   <td class="text-center">{% if r.days_left is not None %}<span class="badge text-bg-{{ info.1 }}">{% if r.days_left < 0 %}Vencido hace {{ r.days_left|stringformat:"d"|cut:"-" }} d{% elif r.days_left == 0 %}Hoy{% else %}{{ r.days_left }} d{% endif %}</span>{% else %}<span class="badge text-bg-light">{{ info.0 }}</span>{% endif %}</td>
   <td class="text-end text-nowrap">{% if r.missing_ipc %}<a href="{% url 'empleados:ipc_list' %}" class="small text-danger" title="Cargá el IPC de esos meses">Falta IPC<br>{{ r.ipc_missing_text }}</a>{% elif r.new_salary %}{{ r.new_salary|ars }}<div class="small text-muted">+{{ r.pct|num:2 }} %{% if r.extras %} · total con adicionales {{ r.gross_new|ars }}{% endif %}</div>{% endif %}</td>
   <td class="text-end text-nowrap">{% if can_edit %}<a href="{% url 'empleados:esquema_edit' r.employee.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-link px-1" title="{% if r.plan %}Editar esquema{% else %}Configurar esquema{% endif %}"><i class="bi bi-{% if r.plan %}gear{% else %}plus-circle{% endif %}"></i></a>{% endif %}
-    {% if can_apply and r.can_apply %}<button name="empleado" value="{{ r.employee.pk }}" class="btn btn-sm btn-outline-success" data-confirm="¿Registrar el ajuste de {{ r.employee.full_name }} a {{ r.new_salary|ars }} desde el {{ r.next_date|date:'d/m/Y' }}?">Aplicar</button>{% endif %}</td>
+    {% if can_apply and r.can_apply %}<button name="empleado" value="{{ r.employee.pk }}" class="btn btn-sm btn-outline-success" data-confirm="¿Registrar el ajuste de {{ r.employee.full_name }} a {{ r.new_salary|ars }} desde el {{ r.next_date|date:'d/m/Y' }} (mes trabajado {{ r.next_date|mes_trabajado }}, se abona en {{ r.next_date|mes_cobro }})?">Aplicar</button>{% endif %}</td>
 </tr>{% endwith %}
 {% empty %}<tr><td colspan="9" class="text-center text-muted py-4">No hay empleados para estos filtros.</td></tr>{% endfor %}
 </tbody></table></div></div>
 {% if can_apply and rows %}<button class="btn btn-success mt-2" data-confirm="¿Registrar los ajustes seleccionados?"><i class="bi bi-check2-all me-1"></i>Aplicar seleccionados</button>{% endif %}
 </form>
-<p class="small text-muted mt-3">El estimado se calcula sobre el último salario registrado. Por IPC se acumulan las variaciones mensuales de los meses que correspondan al período (según el rezago configurado); si falta algún mes, cargalo en <a href="{% url 'empleados:ipc_list' %}">IPC mensual</a>. Al aplicar, se registra un ajuste salarial con vigencia en la fecha programada.</p>
+<p class="small text-muted mt-3">El estimado se calcula sobre el último salario registrado. Por IPC se acumulan las variaciones mensuales de los meses que correspondan al período (según el rezago configurado); si falta algún mes, cargalo en <a href="{% url 'empleados:ipc_list' %}">IPC mensual</a>. Al aplicar, se registra un ajuste salarial con vigencia en la fecha programada. <strong>La vigencia es el mes trabajado</strong>: un ajuste del 01/11 corresponde a noviembre trabajado, que se abona en diciembre (en los días de acreditación de cada empleado).</p>
 {% endblock %}

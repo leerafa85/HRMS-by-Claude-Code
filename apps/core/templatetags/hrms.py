@@ -59,3 +59,25 @@ def doc_cell(value):
     from apps.reportes.documents import cell_text
 
     return cell_text(value)
+
+
+@register.filter
+def mes_trabajado(value):
+    """Fecha → «Noviembre 2026» (mes trabajado)."""
+    from apps.core.dates import month_label
+
+    return month_label(value)
+
+
+@register.filter
+def mes_cobro(value):
+    """Fecha del mes trabajado → mes en que se abona («Diciembre 2026»)."""
+    from apps.core.dates import month_label, payment_month
+
+    return month_label(payment_month(value))
+
+
+@register.filter
+def get_month(choices, number):
+    """Nombre del mes a partir de una lista de opciones (número, nombre)."""
+    return dict(choices).get(int(number), "")

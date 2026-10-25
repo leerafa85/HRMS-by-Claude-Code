@@ -20,6 +20,7 @@ from apps.core.crud import (
     HRUpdateView,
     ModuleRequiredMixin,
 )
+from apps.core.dates import month_label, payment_month, worked_month_text
 from apps.core.formatting import format_ars
 from apps.core.models import AuditLog
 from apps.core.modules import Level, Module
@@ -103,7 +104,11 @@ def employee_export(request):
                "Puesto", "Sede", "Jefe directo", "Ingreso", "Antigüedad", "Modalidad", "CCT", "Categoría",
                "Obra social", "Estado", "Egreso"]
     if can_salary:
-        headers += ["Salario base vigente", "Costos adicionales", "Total con adicionales vigente"]
+        from apps.core.dates import month_label
+
+        worked = month_label(datetime.date.today())
+        headers += [f"Salario base vigente (mes trabajado {worked})", "Costos adicionales",
+                    f"Total con adicionales vigente (mes trabajado {worked})"]
     rows = []
     for e in Employee.objects.select_related("department", "position", "location", "manager"):
         row = [e.file_number, e.last_name, e.first_name, e.dni, e.cuil, e.birth_date, e.work_email, e.mobile,
@@ -178,7 +183,7 @@ def employee_context(employee, user, self_view=False):
         "payments_edit": user.can(Module.PAGOS, Level.EDITAR),
         "sensitive": user.can(Module.EMPLEADOS) or is_self,
     }
-    ctx = {"employee": employee, "perm": can, "is_self": is_self, "self_view": self_view}
+    ctx = {"employee": employee, "perm": can, "is_self": is_self, "self_view": self_view, "today": datetime.date.today()}
     if can["edit"] and not self_view:
         from .completeness import missing_fields
 
@@ -505,7 +510,9 @@ class SalaryList(HRListView):
     extra_actions = [("Ajuste masivo / paritaria", "empleados:salario_masivo", "people-fill", Level.ADMINISTRAR)]
     columns = [
         Column("Empleado", "employee", link=True),
-        Column("Vigencia", "effective_date"),
+        Column("Vigencia desde", "effective_date"),
+        Column("Mes trabajado", "worked_month"),
+        Column("Se abona en", "paid_in"),
         Column("Base anterior", "previous_salary", kind="money"),
         Column("Salario base", "new_salary", kind="money"),
         Column("Costos adicionales", lambda a: "; ".join(f"{c.concept}: {format_ars(c.amount)}" for c in a.extra_costs.all()) or "—"),
@@ -554,6 +561,9 @@ class _SalaryFormMixin:
         ctx = super().get_context_data(**kwargs)
         ctx.setdefault("formset", self.get_formset())
         ctx["carried_over"] = self.request.method != "POST" and bool(self.previous_extras())
+        emp = self.object.employee if self.object else Employee.objects.filter(
+            pk=self.request.GET.get("empleado") or 0).first()
+        ctx["employee_window"] = f"{emp.pay_day_from} al {emp.pay_day_to}" if emp and emp.pay_day_from else ""
         return ctx
 
     def form_valid(self, form):
@@ -702,7 +712,8 @@ def salary_plan_edit(request, employee_pk):
         if form.is_valid():
             plan = form.save()
             AuditLog.log(request.user, AuditLog.Action.UPDATE, employee, f"Esquema de ajuste: {plan.summary}")
-            messages.success(request, f"Esquema guardado. Próximo ajuste: {plan.next_date():%d/%m/%Y}.")
+            nxt_date = plan.next_date()
+            messages.success(request, f"Esquema guardado. Próximo ajuste: {nxt_date:%d/%m/%Y} ({worked_month_text(nxt_date)}).")
             nxt = request.GET.get("next", "")
             if nxt.startswith("/") and not nxt.startswith("//"):
                 return redirect(nxt)
@@ -794,11 +805,12 @@ def upcoming_adjustments(request):
 
     if request.GET.get("exportar"):
         headers = ["Legajo", "Empleado", "Área", "Esquema", "Último ajuste", "Salario base actual", "Costos adicionales",
-                   "Total con adicionales actual", "Próximo ajuste", "Días restantes", "Base estimada", "Total con adicionales estimado",
+                   "Total con adicionales actual", "Próximo ajuste (vigencia)", "Mes trabajado", "Se abona en", "Días restantes", "Base estimada", "Total con adicionales estimado",
                    "Variación %", "Estado", "IPC faltante"]
         data = [[r.employee.file_number, str(r.employee), str(r.employee.department or ""),
                  r.plan.summary if r.plan else "", r.last.effective_date if r.last else None, r.base_salary,
-                 r.extras, r.gross_now, r.next_date, r.days_left, None if r.missing_ipc else r.new_salary,
+                 r.extras, r.gross_now, r.next_date, month_label(r.next_date), month_label(payment_month(r.next_date)),
+                 r.days_left, None if r.missing_ipc else r.new_salary,
                  None if r.missing_ipc else r.gross_new,
                  round(r.pct, 2) if r.pct is not None and not r.missing_ipc else None,
                  UPCOMING_STATUS[r.status][0], r.ipc_missing_text] for r in rows]

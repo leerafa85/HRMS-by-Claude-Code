@@ -12,6 +12,7 @@
   </form>
 </div></div>
 {% if preview %}
+<div class="alert alert-info small" style="max-width:980px">Rige desde el <strong>mes trabajado {{ form.cleaned_data.effective_date|mes_trabajado }}</strong>, que se abona en <strong>{{ form.cleaned_data.effective_date|mes_cobro }}</strong>.</div>
 <div class="card" style="max-width:980px"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Legajo</th><th>Empleado</th><th class="text-end">Base actual</th><th class="text-end">Base nueva</th><th class="text-end">Costos adicionales</th><th class="text-end">Total con adicionales nuevo</th></tr></thead><tbody>
 {% for e, cur, new, extras, gross, base in preview %}<tr><td>{{ e.file_number }}</td><td>{{ e }}</td><td class="text-end">{{ cur|ars }}</td><td class="text-end fw-semibold">{{ new|ars }}</td><td class="text-end">{{ extras|ars }}</td><td class="text-end fw-semibold">{{ gross|ars }}</td></tr>{% endfor %}
 </tbody></table></div></div>

@@ -2,7 +2,8 @@
 {% block title %}Resumen mensual{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  <h1 class="h4 page-title me-auto">Novedades del mes para liquidación</h1>
+  <div class="me-auto"><h1 class="h4 page-title">Novedades del mes trabajado para liquidación</h1>
+    <div class="small text-muted">Mes trabajado {{ months|get_month:month }} {{ year }} · se abona en {{ pay_label }}</div></div>
   <form class="d-flex gap-2">
     <select name="mes" class="form-select form-select-sm">{% for n, m in months %}<option value="{{ n }}" {% if n == month %}selected{% endif %}>{{ m }}</option>{% endfor %}</select>
     <select name="anio" class="form-select form-select-sm">{% for y in years %}<option {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}</select>

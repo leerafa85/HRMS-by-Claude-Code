@@ -31,7 +31,8 @@ class SalaryAdvance(models.Model):
     paid_date = models.DateField("fecha de pago realizado", null=True, blank=True,
                                  help_text="Vacío mientras el adelanto no se haya entregado.")
     discount_period = models.DateField(
-        "se descuenta del sueldo de", help_text="Mes de liquidación en el que se descuenta.",
+        "se descuenta del sueldo del mes trabajado",
+        help_text="Mes trabajado en cuya liquidación se descuenta (se abona el mes siguiente).",
     )
     discounted = models.BooleanField("ya descontado", default=False)
     discounted_on = models.DateField("fecha de descuento", null=True, blank=True)

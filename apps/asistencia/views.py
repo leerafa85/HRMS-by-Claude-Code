@@ -9,7 +9,7 @@ from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.crud import Column, HRCreateView, HRDeleteView, HRListView, HRUpdateView
-from apps.core.dates import MESES, MONTH_CHOICES
+from apps.core.dates import MESES, MONTH_CHOICES, month_label, payment_month
 from apps.core.formatting import format_ars, format_number
 from apps.core.models import AuditLog
 from apps.core.modules import Level, Module
@@ -290,12 +290,14 @@ def summary(request):
         printable_rows = [row[:7] + [format_number(v) if v else "" for v in row[7:10]] + [row[10],
                           format_ars(row[11]) if row[11] else ""] for row in data]
         doc = Document(
-            title=f"Novedades de asistencia · {MESES[month - 1]} {year}",
-            subtitle=[f"Área: {area or 'todas'}", "Solo horas extras y licencias aprobadas."],
+            title=f"Novedades de asistencia · mes trabajado {MESES[month - 1]} {year}",
+            subtitle=[f"Área: {area or 'todas'} · Se abona en {month_label(payment_month(datetime.date(year, month, 1)))}",
+                      "Solo horas extras y licencias aprobadas."],
         ).add(Table(headers, printable_rows, footer=totals))
         return document_response(request, doc, f"novedades_{year}_{month:02d}")
     return render(request, "asistencia/summary.html", {
         "rows": rows, "year": year, "month": month, "months": MONTH_CHOICES,
+        "pay_label": month_label(payment_month(datetime.date(year, month, 1))),
         "departments": Department.objects.all(), "area": request.GET.get("area", ""),
         "years": range(today.year + 1, today.year - 6, -1),
     })

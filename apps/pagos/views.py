@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.crud import Column, HRCreateView, HRDeleteView, HRListView, HRUpdateView
-from apps.core.dates import MESES
+from apps.core.dates import MESES, payment_month
 from apps.core.formatting import format_ars
 from apps.core.models import AuditLog
 from apps.core.modules import Level, Module
@@ -42,6 +42,11 @@ def _period_label(d):
     return f"{MESES[d.month - 1]} {d.year}" if d else ""
 
 
+def _worked_label(d):
+    """«Octubre 2026 (se abona en Noviembre 2026)»: el período de descuento es un mes trabajado."""
+    return f"{_period_label(d)} (se abona en {_period_label(payment_month(d))})" if d else ""
+
+
 def _periods():
     today = datetime.date.today().replace(day=1)
     from apps.empleados.models import add_months
@@ -69,14 +74,14 @@ class AdvanceList(HRListView):
         Column("Motivo", "reason"),
         Column("Forma de pago", "payment_method"),
         Column("Pagado el", "paid_date"),
-        Column("Se descuenta de", lambda a: _period_label(a.discount_period)),
+        Column("Se descuenta del mes trabajado", lambda a: _worked_label(a.discount_period)),
         Column("Estado", "status_label", badge=ADV_BADGES, badge_key="status"),
     ]
     filters = [
         ("empleado", "employee_id", "Empleado", lambda: [(e.pk, str(e)) for e in Employee.objects.all()]),
         ("area", "employee__department_id", "Área", lambda: [(d.pk, d.name) for d in Department.objects.all()]),
         ("estado", None, "Estado", SalaryAdvance.Status.choices),
-        ("periodo", "discount_period", "Se descuenta de", _periods),
+        ("periodo", "discount_period", "Mes trabajado", _periods),
     ]
 
     def get_queryset(self):
@@ -174,7 +179,8 @@ def advance_mark_discounted(request):
     qs.update(discounted=True, discounted_on=timezone.localdate())
     AuditLog.objects.create(user=request.user, action=AuditLog.Action.UPDATE, model="adelanto de sueldo",
                             description=f"{count} adelantos descontados del período {_period_label(period)}")
-    messages.success(request, f"{count} adelanto(s) por {format_ars(total)} marcados como descontados de {_period_label(period)}.")
+    messages.success(request, f"{count} adelanto(s) por {format_ars(total)} marcados como descontados del mes trabajado "
+                              f"{_worked_label(period)}.")
     return redirect(reverse("pagos:adelanto_list") + f"?periodo={period:%Y-%m-%d}")
 
 
@@ -224,9 +230,10 @@ def advance_report(request):
             if not items and status == SalaryAdvance.Status.ANULADO:
                 continue
             doc.add(Section(f"{SalaryAdvance.Status(status).label} ({len(items)})"), Table(
-                ["Fecha", "Importe", "Motivo", "Forma de pago", "Pagado el", "Se descuenta de", "Descontado el", "Comprobante"],
+                ["Fecha", "Importe", "Motivo", "Forma de pago", "Pagado el", "Se descuenta del mes trabajado", "Descontado el",
+                 "Comprobante"],
                 [[a.date, format_ars(a.amount), a.reason, a.get_payment_method_display(), a.paid_date,
-                  _period_label(a.discount_period), a.discounted_on,
+                  _worked_label(a.discount_period), a.discounted_on,
                   Link("Sí", a.attachment.url) if a.attachment else "No"] for a in items],
                 footer=["Subtotal", format_ars(sum((a.amount for a in items), Decimal(0))), "", "", "", "", "", ""]
                 if items else None,

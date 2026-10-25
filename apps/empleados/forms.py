@@ -232,7 +232,10 @@ ExtraCostFormSet = inlineformset_factory(
 
 class BulkSalaryForm(BaseForm):
     percent = forms.DecimalField(label="Aumento (%)", max_digits=6, decimal_places=2)
-    effective_date = forms.DateField(label="Vigencia desde", widget=DATE)
+    effective_date = forms.DateField(
+        label="Vigencia desde (mes trabajado)", widget=DATE,
+        help_text="Mes TRABAJADO desde el que rige el aumento (01/11 = noviembre trabajado, se abona en diciembre).",
+    )
     reason = forms.ChoiceField(label="Motivo", choices=SalaryAdjustment.Reason.choices, initial="paritaria")
     department = forms.ModelChoiceField(label="Solo área", queryset=Department.objects.all(), required=False)
     union_agreement = forms.CharField(label="Solo convenio (CCT)", required=False, help_text="Texto exacto del convenio.")

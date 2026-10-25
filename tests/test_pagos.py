@@ -137,7 +137,7 @@ class HomeTests(HRTestCase):
                                      discount_period=TODAY.replace(day=1))
         items = home.agenda(self.admin, TODAY)
         titles = " ".join(i.title for i in items)
-        self.assertIn("Acreditación de sueldos", titles)
+        self.assertIn("Pago de sueldos del mes trabajado", titles)
         self.assertIn("Pagar adelanto a Juan Pérez", titles)
 
         news = home.weekly_news(self.admin, TODAY)

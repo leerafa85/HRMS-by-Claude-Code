@@ -7,6 +7,7 @@
     {% include "partials/form_errors.html" %}
     <div class="row">
       {% field form.employee %}{% field form.effective_date "col-md-3" %}{% field form.reason "col-md-3" %}
+      <div class="col-12 mb-2"><div class="alert alert-info py-1 px-2 small mb-0" id="wmLabel"></div></div>
       {% field form.new_salary "col-md-4" %}{% field form.percent "col-md-4" %}
     </div>
 
@@ -95,6 +96,17 @@
   });
   {% endif %}
   recalc();
+  // Aclaración del mes trabajado y el mes de cobro según la vigencia
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const eff = document.getElementById("id_effective_date"), wm = document.getElementById("wmLabel");
+  function worked() {
+    const v = (eff.value || "").split("-");
+    if (v.length < 2) { wm.textContent = "La vigencia indica el MES TRABAJADO desde el que rige el salario."; return; }
+    const y = parseInt(v[0], 10), m = parseInt(v[1], 10) - 1, py = m === 11 ? y + 1 : y, pm = (m + 1) % 12;
+    wm.innerHTML = "<i class=\"bi bi-info-circle me-1\"></i>Rige desde el <strong>mes trabajado " + meses[m] + " " + y +
+      "</strong>, que se abona en <strong>" + meses[pm] + " " + py + "</strong>{% if employee_window %} (días {{ employee_window }}){% endif %}.";
+  }
+  eff.addEventListener("change", worked); eff.addEventListener("input", worked); worked();
 })();
 </script>
 {% endblock %}

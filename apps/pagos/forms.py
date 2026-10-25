@@ -19,7 +19,7 @@ class MonthField(forms.DateField):
 
 
 class SalaryAdvanceForm(BaseModelForm):
-    discount_period = MonthField(label="Se descuenta del sueldo de (mes)")
+    discount_period = MonthField(label="Se descuenta del sueldo del mes trabajado")
 
     class Meta:
         model = SalaryAdvance
@@ -32,7 +32,9 @@ class SalaryAdvanceForm(BaseModelForm):
         self.fields["discount_period"].widget.input_type = "month"
         self.fields["discount_period"].widget.format = "%Y-%m"
         self.fields["discount_period"].required = False
-        self.fields["discount_period"].help_text = "Vacío = el mes de la fecha del adelanto."
+        self.fields["discount_period"].help_text = (
+            "Mes TRABAJADO en cuya liquidación se descuenta (ese sueldo se abona el mes siguiente). "
+            "Vacío = el mes de la fecha del adelanto.")
         if not self.instance.pk:
             self.fields["employee"].queryset = Employee.objects.exclude(status=Employee.Status.DESVINCULADO)
             self.fields.pop("discounted")
@@ -47,7 +49,7 @@ class SalaryAdvanceForm(BaseModelForm):
 
 
 class MarkDiscountedForm(BaseForm):
-    period = MonthField(label="Período liquidado (mes)", initial=lambda: datetime.date.today().replace(day=1))
+    period = MonthField(label="Mes trabajado liquidado", initial=lambda: datetime.date.today().replace(day=1))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

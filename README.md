@@ -108,6 +108,8 @@ Hacé copias periódicas de la base PostgreSQL (`pg_dump`) **y** de la carpeta d
 
 ## Notas legales y de configuración
 
+- **Vigencia = mes trabajado.** La vigencia de un salario o ajuste indica el **mes trabajado** desde el que rige (por ejemplo, 01/11/2026 = noviembre trabajado), que se abona el mes siguiente en los días de acreditación de cada empleado. Todas las pantallas de salarios, ajustes, adelantos y novedades lo aclaran ("mes trabajado … · se abona en …").
+
 - Las reglas legales están en `apps/licencias/lct.py` y en los tipos de licencia (editables desde *Configuración → Tipos de licencia*). Muchos convenios colectivos dan más días que la LCT (por ejemplo, por nacimiento); ajustalos según el CCT de tu empresa.
 - Los feriados 2026 se cargaron desde el calendario oficial difundido para ese año. Verificalos en [argentina.gob.ar/interior/feriados](https://www.argentina.gob.ar/interior/feriados), porque el Poder Ejecutivo puede agregar o mover fechas.
 - El sistema **no liquida sueldos**: registra las novedades (licencias, ausencias, tardanzas y horas extras) y las exporta para el liquidador o el sistema de liquidación.

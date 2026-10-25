@@ -6,6 +6,8 @@ from decimal import Decimal
 
 from django.db import transaction
 
+from apps.core.dates import worked_month_text
+
 from .models import Employee, SalaryAdjustment, SalaryAdjustmentPlan
 
 REASON_BY_METHOD = {
@@ -105,7 +107,8 @@ def apply(row, user):
         previous_salary=row.base_salary,
         new_salary=row.new_salary,
         reason=REASON_BY_METHOD[plan.method],
-        notes=f"Ajuste programado ({plan.get_frequency_months_display().lower()}): {detail}. Variación {row.pct:.2f} %.",
+        notes=f"Ajuste programado ({plan.get_frequency_months_display().lower()}): {detail}. Variación {row.pct:.2f} %. "
+              f"Rige desde el {worked_month_text(row.next_date)}.",
         created_by=user,
     )
     adjustment.copy_extra_costs_from(row.last)

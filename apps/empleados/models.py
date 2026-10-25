@@ -472,7 +472,11 @@ class SalaryAdjustment(models.Model):
     employee = models.ForeignKey(
         Employee, on_delete=models.CASCADE, related_name="salary_adjustments", verbose_name="empleado"
     )
-    effective_date = models.DateField("vigencia desde")
+    effective_date = models.DateField(
+        "vigencia desde (mes trabajado)",
+        help_text="Indica el MES TRABAJADO desde el que rige el salario (ej.: 01/11/2026 = noviembre trabajado, "
+                  "que se abona a comienzos de diciembre o en los días de cobro del empleado).",
+    )
     previous_salary = models.DecimalField("salario base anterior ($)", max_digits=14, decimal_places=2, null=True, blank=True)
     new_salary = models.DecimalField("salario base ($)", max_digits=14, decimal_places=2)
     reason = models.CharField("motivo", max_length=20, choices=Reason.choices, default=Reason.PARITARIA)
@@ -510,6 +514,22 @@ class SalaryAdjustment(models.Model):
         if not self.previous_salary:
             return None
         return (self.new_salary - self.previous_salary) / self.previous_salary * 100
+
+    @property
+    def worked_month(self):
+        from apps.core.dates import month_label
+
+        return month_label(self.effective_date)
+
+    @property
+    def paid_in(self):
+        """Mes de cobro del primer sueldo con este valor, con la franja de días del empleado si está cargada."""
+        from apps.core.dates import month_label, payment_month
+
+        text = month_label(payment_month(self.effective_date))
+        if self.employee.pay_day_from:
+            text += f" (días {self.employee.pay_day_from} al {self.employee.pay_day_to})"
+        return text
 
     @property
     def extras_total(self):

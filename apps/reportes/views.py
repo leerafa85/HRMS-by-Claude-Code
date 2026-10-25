@@ -12,7 +12,7 @@ from django.http import Http404
 from django.shortcuts import render
 
 from apps.asistencia.models import Absence, Overtime, Tardiness
-from apps.core.dates import MESES
+from apps.core.dates import MESES, worked_month_text
 from apps.core.formatting import format_ars
 from apps.core.modules import Module
 from apps.empleados.models import Employee
@@ -167,7 +167,9 @@ def payroll_mass(request):
     return {"headers": ["Área", "Empleados", "Salarios base", "Costos adicionales", "Totales con adicionales", "Promedio total con adicionales",
                         "Sin salario cargado"], "rows": rows,
             "money_cols": [2, 3, 4, 5],
-            "summary": f"Total mensual: base {format_ars(total_net)} · total con adicionales (base + costos adicionales) {format_ars(total_gross)}",
+            "summary": f"Salarios vigentes para el {worked_month_text(datetime.date.today())}. "
+                       f"Total mensual: base {format_ars(total_net)} · total con adicionales (base + costos adicionales) "
+                       f"{format_ars(total_gross)}",
             "chart": {"type": "bar", "labels": [r[0] for r in rows],
                       "series": [{"label": "Totales con adicionales", "values": [float(r[4]) for r in rows]}]}}
 

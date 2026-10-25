@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from django.db.models import Q
 from django.urls import reverse
 
-from apps.core.dates import MESES
+from apps.core.dates import MESES, month_label, payment_month, worked_month_text
 from apps.core.formatting import format_ars, format_number
+from apps.empleados.models import add_months
 
 from .modules import Level, Module
 
@@ -54,7 +55,8 @@ def agenda(user, today=None, horizon=30):
         for (start, end), emps in sorted(windows.items()):
             if start <= limit:
                 items.append(AgendaItem(
-                    start, f"Acreditación de sueldos · {len(emps)} empleado{'s' if len(emps) != 1 else ''}",
+                    start, f"Pago de sueldos del mes trabajado {month_label(add_months(start, -1)).lower()}"
+                           f" · {len(emps)} empleado{'s' if len(emps) != 1 else ''}",
                     f"Del {start:%d/%m} al {end:%d/%m}: " + ", ".join(e.full_name for e in emps[:4])
                     + ("…" if len(emps) > 4 else ""),
                     reverse("empleados:empleado_list"), "cash-stack", end=end))
@@ -68,11 +70,10 @@ def agenda(user, today=None, horizon=30):
         period = today.replace(day=1)
         pending = SalaryAdvance.pending_discount(period=period)
         if pending.exists():
-            from apps.empleados.models import add_months
-
             month_end = add_months(period, 1) - datetime.timedelta(days=1)
             items.append(AgendaItem(
-                month_end, f"Descontar adelantos en la liquidación de {MESES[period.month - 1].lower()}",
+                month_end, f"Descontar adelantos del sueldo del mes trabajado {MESES[period.month - 1].lower()}"
+                           f" (se abona en {MESES[payment_month(period).month - 1].lower()})",
                 f"{pending.count()} adelanto(s) por {format_ars(SalaryAdvance.total(pending))}",
                 reverse("pagos:adelanto_list") + f"?estado=a_descontar&periodo={period:%Y-%m-%d}", "dash-circle"))
         open_states = [FinalSettlement.Status.BORRADOR, FinalSettlement.Status.CONFIRMADA, FinalSettlement.Status.PAGO_PARCIAL]
@@ -100,11 +101,11 @@ def agenda(user, today=None, horizon=30):
                 ", ".join(r.employee.full_name for r in overdue[:4]) + ("…" if len(overdue) > 4 else ""),
                 reverse("empleados:proximos_ajustes") + "?estado=vencido", "graph-up-arrow"))
         for date, rows in sorted(by_date.items()):
-            items.append(AgendaItem(
-                date, f"Ajuste salarial · {rows[0].employee.full_name}" if len(rows) == 1
-                else f"{len(rows)} ajustes salariales", ", ".join(r.employee.full_name for r in rows[1:5]) if len(rows) > 1
-                else (rows[0].plan.summary if rows[0].plan else ""),
-                reverse("empleados:proximos_ajustes"), "graph-up-arrow"))
+            title = (f"Ajuste salarial · {rows[0].employee.full_name}" if len(rows) == 1
+                     else f"{len(rows)} ajustes salariales")
+            names = ", ".join(r.employee.full_name for r in rows[:4]) + " · " if len(rows) > 1 else ""
+            items.append(AgendaItem(date, title, f"{names}Rige desde el {worked_month_text(date)}",
+                                    reverse("empleados:proximos_ajustes"), "graph-up-arrow"))
 
     if user.can(Module.EMPLEADOS):
         for e in active.filter(trial_end_date__range=(today, limit)):
@@ -173,7 +174,7 @@ def weekly_news(user, today=None):
         from apps.empleados.models import SalaryAdjustment
 
         add("Ajustes salariales con vigencia en la semana", "graph-up-arrow", [
-            f"{a.employee.full_name} · {a.effective_date:%d/%m} · {a.get_reason_display()}"
+            f"{a.employee.full_name} · {a.effective_date:%d/%m} · {a.get_reason_display()} · {worked_month_text(a.effective_date)}"
             for a in SalaryAdjustment.objects.filter(effective_date__range=(start, end)).select_related("employee")],
             reverse("empleados:salario_list"))
     birthdays = []
