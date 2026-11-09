@@ -8,3 +8,4 @@ media/
 staticfiles/
 .ruff_cache/
 .DS_Store
+.devcontainer/.datos_demo_ok

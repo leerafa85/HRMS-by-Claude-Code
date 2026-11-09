@@ -45,11 +45,12 @@ Sin instalar nada:
 
 1. Abrí el repositorio en GitHub desde el navegador.
 2. **Code → pestaña Codespaces → Create codespace on main**.
-3. Esperá unos minutos: se instalan las dependencias y se cargan los datos demo automáticamente.
-4. Cuando aparezca el aviso del puerto **8000**, tocá **Open in Browser** (o abrí la pestaña *Ports* y el ícono del globo en el puerto 8000).
+3. Esperá unos minutos. En la terminal de abajo aparece un recuadro verde **"HRMS funcionando"** con el enlace de la aplicación.
+4. Tocá el aviso **Open in Browser** que aparece abajo a la derecha, o el **globo 🌐** del puerto 8000 en la pestaña **Ports**, o el enlace del recuadro verde.
 5. Ingresá con `admin` / `admin1234` o con los usuarios demo `rrhh`, `jefe`, `empleado` (clave `Demo1234!`).
 
-Si el servidor no está corriendo, en la terminal del Codespace ejecutá `python manage.py runserver 0.0.0.0:8000`.
+En el iPad el navegador bloquea las pestañas que se abren solas, por eso hay que tocar uno de esos botones.
+Si el recuadro verde no aparece, en la terminal ejecutá `bash .devcontainer/iniciar.sh`.
 Cuando termines, detené el Codespace (menú *Codespaces → Stop*) para no consumir la cuota mensual gratuita.
 
 ## Probarlo en tu computadora
