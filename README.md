@@ -49,7 +49,7 @@ Sin instalar nada:
 4. Tocá el aviso **Open in Browser** que aparece abajo a la derecha, o el **globo 🌐** del puerto 8000 en la pestaña **Ports**, o el enlace del recuadro verde.
 5. Ingresá con `admin` / `admin1234` o con los usuarios demo `rrhh`, `jefe`, `empleado` (clave `Demo1234!`).
 
-En el iPad el navegador bloquea las pestañas que se abren solas, por eso hay que tocar uno de esos botones.
+En el iPad el navegador bloquea las pestañas que se abren solas: para que se abra automáticamente, desactivá el bloqueo de ventanas emergentes (Safari: Ajustes → Apps → Safari → «Bloquear ventanas»; Chrome: Configuración → Configuración de contenido → «Bloquear ventanas emergentes»). Si igual no se abre, usá uno de esos botones.
 Si el recuadro verde no aparece, en la terminal ejecutá `bash .devcontainer/iniciar.sh`.
 Cuando termines, detené el Codespace (menú *Codespaces → Stop*) para no consumir la cuota mensual gratuita.
 
